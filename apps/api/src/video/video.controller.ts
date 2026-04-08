@@ -1,0 +1,83 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { VideoNotFoundError } from './video.errors';
+import { generateVideoRequestSchema, videoIdParamSchema } from './video.schemas';
+import { VideoService } from './video.service';
+
+@Controller()
+export class VideoController {
+  public constructor(
+    private readonly prismaService: PrismaService,
+    private readonly videoService: VideoService
+  ) {}
+
+  @Post('generate-video')
+  public async generateVideo(@Body() body: unknown) {
+    const parsedBody = generateVideoRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException(parsedBody.error.flatten());
+    }
+
+    const user = await this.prismaService.user.upsert({
+      where: {
+        email: parsedBody.data.userEmail,
+      },
+      update: {
+        ...(parsedBody.data.userName ? { name: parsedBody.data.userName } : {}),
+      },
+      create: {
+        email: parsedBody.data.userEmail,
+        plan: 'FREE',
+        credits: 25,
+        ...(parsedBody.data.userName ? { name: parsedBody.data.userName } : {}),
+      },
+    });
+
+    const video = await this.videoService.createVideo({
+      userId: user.id,
+      prompt: parsedBody.data.prompt,
+      provider: parsedBody.data.provider,
+      aspectRatio: parsedBody.data.aspectRatio,
+    });
+
+    return {
+      success: true,
+      data: video,
+      error: null,
+    };
+  }
+
+  @Get('video/:id')
+  public async getVideo(@Param() params: unknown) {
+    const parsedParams = videoIdParamSchema.safeParse(params);
+
+    if (!parsedParams.success) {
+      throw new BadRequestException(parsedParams.error.flatten());
+    }
+
+    try {
+      const video = await this.videoService.getVideo(parsedParams.data.id);
+
+      return {
+        success: true,
+        data: video,
+        error: null,
+      };
+    } catch (error: unknown) {
+      if (error instanceof VideoNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
+      throw error;
+    }
+  }
+}
