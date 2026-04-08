@@ -1,4 +1,5 @@
 import { SceneOutline } from '@reevio/types';
+import { createGenerateScenesPromptTemplate } from '../prompt-engine/prompt-templates';
 import { SceneGenerationInput } from './ai-orchestrator.types';
 import { runWithRetryAndFallback } from './run-with-retry-and-fallback';
 
@@ -14,6 +15,12 @@ export async function generateScenes(input: SceneGenerationInput): Promise<Scene
 }
 
 function createPrimaryScenes(input: SceneGenerationInput): SceneOutline[] {
+  const promptTemplate = createGenerateScenesPromptTemplate(
+    input.extractedData,
+    input.scriptPlan,
+    input.jobData
+  );
+
   if (input.scriptPlan.beats.length < 3) {
     throw new Error('Primary scene generation requires at least 3 beats.');
   }
@@ -26,18 +33,24 @@ function createPrimaryScenes(input: SceneGenerationInput): SceneOutline[] {
         : index === input.scriptPlan.beats.length - 1
           ? 'Close the sale'
           : 'Show the payoff',
-    narration: beat.narration,
+    narration: `${beat.narration} ${promptTemplate.systemInstruction}`,
     visualPrompt: `${beat.visualDirection} for ${input.extractedData.productName} in ${input.jobData.aspectRatio}`,
     durationInSeconds: index === 1 ? 5 : 4,
   }));
 }
 
 function createFallbackScenes(input: SceneGenerationInput): SceneOutline[] {
+  const promptTemplate = createGenerateScenesPromptTemplate(
+    input.extractedData,
+    input.scriptPlan,
+    input.jobData
+  );
+
   return [
     {
       id: `${input.jobData.videoId}-scene-fallback-1`,
       headline: `Meet ${input.extractedData.productName}`,
-      narration: `Introduce ${input.extractedData.productName} with a quick visual hook.`,
+      narration: `Introduce ${input.extractedData.productName} with a quick visual hook. ${promptTemplate.systemInstruction}`,
       visualPrompt: `Hero shot of ${input.extractedData.productName} in ${input.jobData.aspectRatio}`,
       durationInSeconds: 4,
     },

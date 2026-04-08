@@ -1,4 +1,5 @@
 import { ParsedPromptData } from '@reevio/types';
+import { createExtractDataPromptTemplate } from '../prompt-engine/prompt-templates';
 import { runWithRetryAndFallback } from './run-with-retry-and-fallback';
 
 const AI_STEP_RETRIES = 2;
@@ -13,11 +14,16 @@ export async function extractData(prompt: string): Promise<ParsedPromptData> {
 }
 
 function extractPrimaryData(prompt: string): ParsedPromptData {
+  const promptTemplate = createExtractDataPromptTemplate(prompt);
   const normalizedPrompt = prompt.trim();
   const promptWords = normalizedPrompt.split(/\s+/).filter((word) => word.length > 0);
 
   if (promptWords.length < 4) {
     throw new Error('Prompt is too short for primary data extraction.');
+  }
+
+  if (!promptTemplate.userInstruction.includes(normalizedPrompt)) {
+    throw new Error('Prompt template did not embed the source brief.');
   }
 
   return {
@@ -30,11 +36,16 @@ function extractPrimaryData(prompt: string): ParsedPromptData {
 }
 
 function extractFallbackData(prompt: string): ParsedPromptData {
+  const promptTemplate = createExtractDataPromptTemplate(prompt);
   const normalizedPrompt = prompt.trim();
   const promptWords = normalizedPrompt.split(/\s+/).filter((word) => word.length > 0);
 
   if (promptWords.length === 0) {
     throw new Error('Prompt is empty.');
+  }
+
+  if (promptTemplate.systemInstruction.length === 0) {
+    throw new Error('Fallback extract-data prompt template is empty.');
   }
 
   return {
