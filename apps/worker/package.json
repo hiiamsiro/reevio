@@ -6,6 +6,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "db:generate": "pnpm exec prisma generate --schema prisma/schema.prisma",
     "lint": "eslint \"src/**/*.ts\"",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.19.0",
+    "prisma": "^6.3.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.0"

@@ -49,6 +49,12 @@ services:
       - web_config_node_modules:/app/packages/config/node_modules
       - web_types_node_modules:/app/packages/types/node_modules
       - web_tsconfig_node_modules:/app/packages/tsconfig/node_modules
+    command:
+      [
+        'sh',
+        '-lc',
+        'pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F web dev',
+      ]
     ports:
       - '3000:3000'
     depends_on:
@@ -90,7 +96,7 @@ services:
       [
         'sh',
         '-lc',
-        'apps/api/node_modules/.bin/prisma db push --schema apps/api/prisma/schema.prisma && apps/api/node_modules/.bin/tsx apps/api/prisma/seed.ts && pnpm -F api dev',
+        'pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F api db:push && pnpm -F api db:seed && pnpm -F api dev',
       ]
     ports:
       - '4000:4000'
@@ -122,6 +128,12 @@ services:
       - worker_config_node_modules:/app/packages/config/node_modules
       - worker_types_node_modules:/app/packages/types/node_modules
       - worker_tsconfig_node_modules:/app/packages/tsconfig/node_modules
+    command:
+      [
+        'sh',
+        '-lc',
+        'mkdir -p apps/worker/prisma && cp apps/api/prisma/schema.prisma apps/worker/prisma/schema.prisma && pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F worker db:generate && pnpm -F worker dev',
+      ]
     depends_on:
       redis:
         condition: service_healthy

@@ -1,7 +1,8 @@
 {
   "extends": "../../packages/tsconfig/nestjs.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
   "include": ["src/**/*", "prisma/**/*"],
   "exclude": ["node_modules", "dist"]
