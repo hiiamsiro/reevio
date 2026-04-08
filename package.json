@@ -1,0 +1,38 @@
+{
+  "name": "reevio",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:web": "pnpm -F web dev",
+    "dev:api": "pnpm -F api dev",
+    "dev:worker": "pnpm -F worker dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm -F web build",
+    "build:api": "pnpm -F api build",
+    "build:worker": "pnpm -F worker build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "test:e2e": "pnpm -r run test:e2e",
+    "db:migrate": "pnpm -F api prisma migrate dev",
+    "db:generate": "pnpm -F api prisma generate",
+    "db:studio": "pnpm -F api prisma studio",
+    "db:seed": "pnpm -F api prisma db seed",
+    "db:push": "pnpm -F api prisma db push",
+    "clean": "pnpm -r run clean && rm -rf node_modules",
+    "format": "pnpm -r run format",
+    "genz": "turbo gen"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "prettier": "^3.5.3",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

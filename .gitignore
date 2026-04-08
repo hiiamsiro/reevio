@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+apps/*/dist/
+apps/*/.turbo/
+.turbo/
+.next/
+.cache/
+
+# TypeScript
+.tscache/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Environment files (keep only .env.example)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Docker
+postgres_data/
+redis_data/
+
+# pnpm
+.pnpm/
+
+# Editor & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Claude Code
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.codex/
+AGENTS.md
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
