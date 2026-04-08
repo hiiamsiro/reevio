@@ -1,0 +1,13 @@
+import { BuiltScene, OrchestratedVideoPlan, VideoAspectRatio, VideoGenerationResult } from '@reevio/types';
+
+export interface GenerateVideoInput {
+  readonly videoId: string;
+  readonly aspectRatio: VideoAspectRatio;
+  readonly orchestratedPlan: OrchestratedVideoPlan;
+  readonly builtScenes: BuiltScene[];
+}
+
+export interface VideoProvider {
+  readonly name: 'remotion' | 'topview' | 'grok' | 'flow' | 'veo';
+  generateVideo(input: GenerateVideoInput): Promise<VideoGenerationResult>;
+}

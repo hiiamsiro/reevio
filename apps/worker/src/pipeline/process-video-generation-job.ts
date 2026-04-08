@@ -10,6 +10,7 @@ import {
 import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestration';
 import { extractData } from '../ai-orchestrator/extract-data';
 import { createImageAssets } from '../image-pipeline/create-image-assets';
+import { createProviderFactory } from '../providers/create-provider-factory';
 
 interface PersistedJobWithVideo {
   readonly id: string;
@@ -86,7 +87,7 @@ export async function processVideoGenerationJob(
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO');
-    const videoResult = generateVideoResult(jobData, orchestratedPlan, builtScenes);
+    const videoResult = await generateVideoResult(jobData, orchestratedPlan, builtScenes);
 
     await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT');
     await savePipelineResult(
@@ -160,17 +161,16 @@ function generateVideoResult(
   jobData: VideoGenerationJobData,
   orchestratedPlan: OrchestratedVideoPlan,
   builtScenes: BuiltScene[]
-): VideoGenerationResult {
-  const outputUrl = `storage://generated/videos/${jobData.videoId}.mp4`;
+): Promise<VideoGenerationResult> {
+  const providerFactory = createProviderFactory();
+  const provider = providerFactory.getProvider(jobData.provider);
 
-  return {
-    provider: jobData.provider,
-    url: outputUrl,
-    previewUrl: outputUrl,
-    durationInSeconds:
-      builtScenes.reduce((total, scene) => total + scene.durationInSeconds, 0) ||
-      orchestratedPlan.durationInSeconds,
-  };
+  return provider.generateVideo({
+    videoId: jobData.videoId,
+    aspectRatio: jobData.aspectRatio,
+    orchestratedPlan,
+    builtScenes,
+  });
 }
 
 async function savePipelineResult(
