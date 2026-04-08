@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useEffectEvent, useState, useTransition } from 'react';
+import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import styles from './page.module.css';
 
 interface VideoResponse {
@@ -97,19 +97,6 @@ export default function CreateVideoPage() {
     setProvider(providers[0].name);
   }, [provider, providers]);
 
-  const refreshVideo = useEffectEvent(async (videoId: string) => {
-    const response = await fetch(`${API_URL}/video/${videoId}`, {
-      cache: 'no-store',
-    });
-    const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
-
-    if (!response.ok) {
-      throw new Error(payload.error ?? 'Failed to refresh video.');
-    }
-
-    setVideo(payload.data);
-  });
-
   useEffect(() => {
     if (!video?.id) {
       return;
@@ -119,8 +106,21 @@ export default function CreateVideoPage() {
       return;
     }
 
+    const refreshVideo = async (): Promise<void> => {
+      const response = await fetch(`${API_URL}/video/${video.id}`, {
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? 'Failed to refresh video.');
+      }
+
+      setVideo(payload.data);
+    };
+
     const intervalId = window.setInterval(() => {
-      void refreshVideo(video.id).catch((error: unknown) => {
+      void refreshVideo().catch((error: unknown) => {
         if (error instanceof Error) {
           setErrorMessage(error.message);
         } else {
@@ -132,7 +132,7 @@ export default function CreateVideoPage() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [refreshVideo, video?.id, video?.status]);
+  }, [video?.id, video?.status]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
