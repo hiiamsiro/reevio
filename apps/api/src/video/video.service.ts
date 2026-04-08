@@ -19,6 +19,26 @@ export class VideoService {
   public async createVideo(input: CreateVideoInput): Promise<VideoRecord> {
     this.providerService.getProvider(input.provider);
 
+    const reusableVideo = await this.prismaService.video.findFirst({
+      where: {
+        userId: input.userId,
+        prompt: input.prompt,
+        provider: toPrismaVideoProvider(input.provider),
+        aspectRatio: input.aspectRatio,
+        status: 'COMPLETED',
+        outputUrl: {
+          not: null,
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    if (reusableVideo) {
+      return toVideoRecord(reusableVideo);
+    }
+
     const videoRecord = await this.prismaService.video.create({
       data: {
         userId: input.userId,

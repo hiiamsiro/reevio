@@ -12,6 +12,7 @@ import { extractData } from '../ai-orchestrator/extract-data';
 import { createImageAssets } from '../image-pipeline/create-image-assets';
 import { createProviderFactory } from '../providers/create-provider-factory';
 import { createLocalStorageService } from '../storage/local-storage.service';
+import { getCachedVideoPipelineState } from './video-cache';
 import { generateSubtitles } from '../voice/generate-subtitles';
 import { generateTtsTrack } from '../voice/generate-tts';
 
@@ -78,35 +79,33 @@ export async function processVideoGenerationJob(
   });
 
   try {
-    const parsedPrompt = await extractData(jobData.prompt);
+    const storageService = createLocalStorageService();
+    const cachedVideoPipelineState = await getCachedVideoPipelineState(prismaClient, jobData);
+    const parsedPrompt = cachedVideoPipelineState?.parsedPrompt ?? (await extractData(jobData.prompt));
 
     await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION');
-    const orchestratedPlan = await createOrchestratedPlan(parsedPrompt, jobData);
+    const orchestratedPlan =
+      cachedVideoPipelineState?.orchestratedPlan ??
+      (await createOrchestratedPlan(parsedPrompt, jobData));
     const providerFactory = createProviderFactory();
-    const storageService = createLocalStorageService();
-    const voiceoverUrl = await generateTtsTrack(
-      jobData.videoId,
-      orchestratedPlan.voiceoverText,
-      storageService
-    );
-    const subtitlesUrl = await generateSubtitles(
-      jobData.videoId,
-      orchestratedPlan.subtitleLines,
-      storageService
-    );
+    const voiceoverUrl =
+      cachedVideoPipelineState?.voiceoverUrl ??
+      (await generateTtsTrack(jobData.videoId, orchestratedPlan.voiceoverText, storageService));
+    const subtitlesUrl =
+      cachedVideoPipelineState?.subtitlesUrl ??
+      (await generateSubtitles(jobData.videoId, orchestratedPlan.subtitleLines, storageService));
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
-    const generatedAssets = await createImageAssets(
-      orchestratedPlan.imagePrompts,
-      jobData.videoId,
-      storageService
-    );
+    const generatedAssets =
+      cachedVideoPipelineState?.generatedAssets ??
+      (await createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId, storageService));
 
     await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES');
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO');
     const videoResult = await generateVideoResult(providerFactory, jobData, orchestratedPlan, builtScenes, voiceoverUrl, subtitlesUrl);
+    await storageService.compressJsonArtifact(videoResult.url);
 
     await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT');
     await savePipelineResult(
@@ -207,6 +206,15 @@ async function savePipelineResult(
   subtitlesUrl: string,
   videoResult: VideoGenerationResult
 ): Promise<void> {
+  const videoMetadata = {
+    durationInSeconds: videoResult.durationInSeconds,
+    tagline: orchestratedPlan.tagline,
+    beats: orchestratedPlan.beats,
+    voiceoverText: orchestratedPlan.voiceoverText,
+    subtitleLines: orchestratedPlan.subtitleLines,
+    queueVersion: 'phase-18',
+  } as unknown as Prisma.InputJsonValue;
+
   await prismaClient.video.update({
     where: {
       id: persistedJob.videoId,
@@ -224,10 +232,7 @@ async function savePipelineResult(
       voiceoverUrl,
       subtitlesUrl,
       completedAt: new Date(),
-      metadata: {
-        durationInSeconds: videoResult.durationInSeconds,
-        queueVersion: 'phase-13',
-      } as Prisma.InputJsonValue,
+      metadata: videoMetadata,
     },
   });
 
