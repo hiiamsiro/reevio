@@ -1,49 +1,23 @@
-import { Worker, Queue } from 'bullmq';
-import { z } from 'zod';
+import { PrismaClient } from '@prisma/client';
+import { Worker } from 'bullmq';
+import { VideoGenerationJobData, VIDEO_GENERATION_QUEUE_NAME } from '@reevio/types';
 import 'reflect-metadata';
+import { validateEnv } from './config/validate-env';
+import { processVideoGenerationJob } from './pipeline/process-video-generation-job';
 
-const renderJobSchema = z.object({
-  projectId: z.string().uuid(),
-  templateId: z.string(),
-  provider: z.enum(['remotion', 'topview', 'grok', 'flow', 'veo']),
-  params: z.record(z.unknown()),
-});
-
-interface RenderJobData {
-  projectId: string;
-  templateId: string;
-  provider: string;
-  params: Record<string, unknown>;
-}
-
-async function main() {
-  const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
-
-  const renderQueue = new Queue<RenderJobData>('video-render', {
-    connection: { url: redisUrl },
-  });
-
-  const worker = new Worker<RenderJobData>(
-    'video-render',
+async function main(): Promise<void> {
+  const env = validateEnv(process.env);
+  const prismaClient = new PrismaClient();
+  const worker = new Worker<VideoGenerationJobData>(
+    VIDEO_GENERATION_QUEUE_NAME,
     async (job) => {
-      const data = renderJobSchema.parse(job.data);
-      console.log(`[worker] Processing job ${job.id} for project ${data.projectId} using ${data.provider}`);
-
-      // TODO: route to provider-specific handler
-      switch (data.provider) {
-        case 'remotion':
-        case 'topview':
-        case 'grok':
-        case 'flow':
-        case 'veo':
-          break;
-        default:
-          throw new Error(`Unknown provider: ${data.provider}`);
-      }
+      await processVideoGenerationJob(prismaClient, job.data);
     },
     {
-      connection: { url: redisUrl },
-      concurrency: 4,
+      connection: {
+        url: env.REDIS_URL,
+      },
+      concurrency: 2,
     }
   );
 
@@ -51,18 +25,30 @@ async function main() {
     console.log(`[worker] Job ${job.id} completed`);
   });
 
-  worker.on('failed', (job, err) => {
-    console.error(`[worker] Job ${job?.id} failed:`, err.message);
+  worker.on('failed', (job, error) => {
+    console.error(`[worker] Job ${job?.id} failed: ${error.message}`);
   });
 
-  console.log(`[worker] Listening on queue "video-render" — redis: ${redisUrl}`);
+  console.log(
+    `[worker] Listening on queue "${VIDEO_GENERATION_QUEUE_NAME}" with redis ${env.REDIS_URL}`
+  );
 
-  process.on('SIGTERM', async () => {
-    console.log('[worker] Shutting down...');
+  const shutdown = async (): Promise<void> => {
     await worker.close();
-    await renderQueue.close();
+    await prismaClient.$disconnect();
     process.exit(0);
-  });
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
-main().catch(console.error);
+main().catch((error: unknown) => {
+  if (error instanceof Error) {
+    console.error(error.message);
+  } else {
+    console.error('Worker failed to start.');
+  }
+
+  process.exit(1);
+});

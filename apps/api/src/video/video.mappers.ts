@@ -1,0 +1,40 @@
+import {
+  toAppVideoProvider,
+  toAppVideoStatus,
+  toVideoAspectRatio,
+} from '../database/prisma-value.mappers';
+import { VideoRecord } from './video.types';
+
+interface PersistedVideoRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly prompt: string;
+  readonly provider: string;
+  readonly aspectRatio: string;
+  readonly status: string;
+  readonly title: string | null;
+  readonly outputUrl: string | null;
+  readonly previewUrl: string | null;
+  readonly errorCode: string | null;
+  readonly errorMessage: string | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export function toVideoRecord(videoRecord: PersistedVideoRecord): VideoRecord {
+  return {
+    id: videoRecord.id,
+    userId: videoRecord.userId,
+    prompt: videoRecord.prompt,
+    provider: toAppVideoProvider(videoRecord.provider),
+    aspectRatio: toVideoAspectRatio(videoRecord.aspectRatio),
+    status: toAppVideoStatus(videoRecord.status),
+    title: videoRecord.title,
+    outputUrl: videoRecord.outputUrl,
+    previewUrl: videoRecord.previewUrl,
+    errorCode: videoRecord.errorCode,
+    errorMessage: videoRecord.errorMessage,
+    createdAt: videoRecord.createdAt.toISOString(),
+    updatedAt: videoRecord.updatedAt.toISOString(),
+  };
+}

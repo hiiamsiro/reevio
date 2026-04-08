@@ -1,54 +1,91 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { PrismaService } from '../prisma/prisma.service';
+import { toPrismaVideoProvider } from '../database/prisma-value.mappers';
 import { JobService } from '../job/job.service';
 import { ProviderService } from '../provider/provider.service';
 import { CreateVideoInput, VideoRecord } from './video.types';
 import { VideoNotFoundError } from './video.errors';
+import { toVideoRecord } from './video.mappers';
+import { VideoQueueError } from './video.errors';
 
 @Injectable()
 export class VideoService {
-  private readonly videos = new Map<string, VideoRecord>();
-
   public constructor(
+    private readonly prismaService: PrismaService,
     private readonly providerService: ProviderService,
     private readonly jobService: JobService
   ) {}
 
-  public createVideo(input: CreateVideoInput): VideoRecord {
+  public async createVideo(input: CreateVideoInput): Promise<VideoRecord> {
     this.providerService.getProvider(input.provider);
 
-    const timestamp = new Date().toISOString();
-    const videoRecord: VideoRecord = {
-      id: randomUUID(),
-      prompt: input.prompt,
-      provider: input.provider,
-      aspectRatio: input.aspectRatio,
-      status: 'queued',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-
-    this.videos.set(videoRecord.id, videoRecord);
-
-    this.jobService.createJob({
-      provider: videoRecord.provider,
-      videoId: videoRecord.id,
+    const videoRecord = await this.prismaService.video.create({
+      data: {
+        userId: input.userId,
+        prompt: input.prompt,
+        provider: toPrismaVideoProvider(input.provider),
+        status: 'QUEUED',
+        aspectRatio: input.aspectRatio,
+      },
     });
 
-    return videoRecord;
+    try {
+      await this.jobService.createJob({
+        userId: input.userId,
+        videoId: videoRecord.id,
+        prompt: input.prompt,
+        provider: input.provider,
+        aspectRatio: input.aspectRatio,
+      });
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+
+      await this.prismaService.video.update({
+        where: {
+          id: videoRecord.id,
+        },
+        data: {
+          status: 'FAILED',
+          errorCode: 'JOB_CREATION_FAILED',
+          errorMessage,
+        },
+      });
+
+      throw new VideoQueueError(videoRecord.id, errorMessage);
+    }
+
+    return this.getVideo(videoRecord.id);
   }
 
-  public getVideo(videoId: string): VideoRecord {
-    const videoRecord = this.videos.get(videoId);
+  public async getVideo(videoId: string): Promise<VideoRecord> {
+    const videoRecord = await this.prismaService.video.findUnique({
+      where: {
+        id: videoId,
+      },
+    });
 
     if (!videoRecord) {
       throw new VideoNotFoundError(videoId);
     }
 
-    return videoRecord;
+    return toVideoRecord(videoRecord);
   }
 
-  public listVideos(): VideoRecord[] {
-    return [...this.videos.values()];
+  public async listVideos(): Promise<VideoRecord[]> {
+    const videoRecords = await this.prismaService.video.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return videoRecords.map(toVideoRecord);
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Unknown video queue error';
 }
