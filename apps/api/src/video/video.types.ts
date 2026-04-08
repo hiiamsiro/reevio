@@ -21,6 +21,8 @@ export interface VideoRecord {
   readonly title: string | null;
   readonly outputUrl: string | null;
   readonly previewUrl: string | null;
+  readonly voiceoverUrl: string | null;
+  readonly subtitlesUrl: string | null;
   readonly errorCode: string | null;
   readonly errorMessage: string | null;
   readonly createdAt: string;

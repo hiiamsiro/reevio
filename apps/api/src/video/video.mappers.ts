@@ -15,6 +15,8 @@ interface PersistedVideoRecord {
   readonly title: string | null;
   readonly outputUrl: string | null;
   readonly previewUrl: string | null;
+  readonly voiceoverUrl: string | null;
+  readonly subtitlesUrl: string | null;
   readonly errorCode: string | null;
   readonly errorMessage: string | null;
   readonly createdAt: Date;
@@ -32,6 +34,8 @@ export function toVideoRecord(videoRecord: PersistedVideoRecord): VideoRecord {
     title: videoRecord.title,
     outputUrl: videoRecord.outputUrl,
     previewUrl: videoRecord.previewUrl,
+    voiceoverUrl: videoRecord.voiceoverUrl,
+    subtitlesUrl: videoRecord.subtitlesUrl,
     errorCode: videoRecord.errorCode,
     errorMessage: videoRecord.errorMessage,
     createdAt: videoRecord.createdAt.toISOString(),
