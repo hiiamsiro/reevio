@@ -163,9 +163,7 @@ function generateVideoResult(
   builtScenes: BuiltScene[]
 ): Promise<VideoGenerationResult> {
   const providerFactory = createProviderFactory();
-  const provider = providerFactory.getProvider(jobData.provider);
-
-  return provider.generateVideo({
+  return providerFactory.generateVideo(jobData.provider, {
     videoId: jobData.videoId,
     aspectRatio: jobData.aspectRatio,
     orchestratedPlan,
