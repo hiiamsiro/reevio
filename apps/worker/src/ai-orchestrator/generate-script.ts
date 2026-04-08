@@ -28,13 +28,17 @@ function createPrimaryScript(
     throw new Error('No highlights available for primary script generation.');
   }
 
+  if (promptTemplate.userInstruction.length === 0) {
+    throw new Error('Primary script prompt template is empty.');
+  }
+
   return {
     title: `${extractedData.productName} promo`,
     tagline: `Built for ${extractedData.audience} with ${jobData.provider} from prompt engine`,
     script: [
       `Open fast and frame ${extractedData.productName} as the hero.`,
       `Show ${extractedData.highlights[0]} as the lead benefit.`,
-      `Close with a direct CTA that serves ${extractedData.primaryGoal}. ${promptTemplate.systemInstruction}`,
+      `Close with a direct CTA that serves ${extractedData.primaryGoal}.`,
     ].join(' '),
     beats: [
       {
@@ -68,13 +72,17 @@ function createFallbackScript(
 ): GeneratedScriptPlan {
   const promptTemplate = createGenerateScriptPromptTemplate(extractedData, jobData);
 
+  if (promptTemplate.systemInstruction.length === 0) {
+    throw new Error('Fallback script prompt template is empty.');
+  }
+
   return {
     title: `${extractedData.productName} highlight reel`,
     tagline: `Quick conversion-focused story for ${jobData.provider}`,
     script: [
       `Start with ${extractedData.productName}.`,
       'Show one clear benefit.',
-      `End with a simple CTA for ${extractedData.primaryGoal}. ${promptTemplate.systemInstruction}`,
+      `End with a simple CTA for ${extractedData.primaryGoal}.`,
     ].join(' '),
     beats: [
       {

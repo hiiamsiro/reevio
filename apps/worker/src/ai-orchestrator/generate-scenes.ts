@@ -25,6 +25,10 @@ function createPrimaryScenes(input: SceneGenerationInput): SceneOutline[] {
     throw new Error('Primary scene generation requires at least 3 beats.');
   }
 
+  if (promptTemplate.userInstruction.length === 0) {
+    throw new Error('Primary scene prompt template is empty.');
+  }
+
   return input.scriptPlan.beats.map((beat, index) => ({
     id: `${input.jobData.videoId}-scene-${index + 1}`,
     headline:
@@ -33,7 +37,7 @@ function createPrimaryScenes(input: SceneGenerationInput): SceneOutline[] {
         : index === input.scriptPlan.beats.length - 1
           ? 'Close the sale'
           : 'Show the payoff',
-    narration: `${beat.narration} ${promptTemplate.systemInstruction}`,
+    narration: beat.narration,
     visualPrompt: `${beat.visualDirection} for ${input.extractedData.productName} in ${input.jobData.aspectRatio}`,
     durationInSeconds: index === 1 ? 5 : 4,
   }));
@@ -46,11 +50,15 @@ function createFallbackScenes(input: SceneGenerationInput): SceneOutline[] {
     input.jobData
   );
 
+  if (promptTemplate.systemInstruction.length === 0) {
+    throw new Error('Fallback scene prompt template is empty.');
+  }
+
   return [
     {
       id: `${input.jobData.videoId}-scene-fallback-1`,
       headline: `Meet ${input.extractedData.productName}`,
-      narration: `Introduce ${input.extractedData.productName} with a quick visual hook. ${promptTemplate.systemInstruction}`,
+      narration: `Introduce ${input.extractedData.productName} with a quick visual hook.`,
       visualPrompt: `Hero shot of ${input.extractedData.productName} in ${input.jobData.aspectRatio}`,
       durationInSeconds: 4,
     },

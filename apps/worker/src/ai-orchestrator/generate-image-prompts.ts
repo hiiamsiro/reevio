@@ -28,9 +28,13 @@ function createPrimaryImagePrompts(
     throw new Error('Scenes are required for primary image prompt generation.');
   }
 
+  if (promptTemplate.userInstruction.length === 0) {
+    throw new Error('Primary image prompt template is empty.');
+  }
+
   return scenes.map(
     (scene) =>
-      `${scene.visualPrompt}. Emphasize ${extractedData.productName}, affiliate style, ${jobData.aspectRatio}. ${promptTemplate.systemInstruction}`
+      `${scene.visualPrompt}. Emphasize ${extractedData.productName}, affiliate style, ${jobData.aspectRatio}.`
   );
 }
 
@@ -41,8 +45,12 @@ function createFallbackImagePrompts(
 ): string[] {
   const promptTemplate = createGenerateImagePromptsTemplate(extractedData, scenes, jobData);
 
+  if (promptTemplate.systemInstruction.length === 0) {
+    throw new Error('Fallback image prompt template is empty.');
+  }
+
   return scenes.map(
     (_scene, index) =>
-      `Clean product marketing image ${index + 1} for ${extractedData.productName} in ${jobData.aspectRatio}. ${promptTemplate.systemInstruction}`
+      `Clean product marketing image ${index + 1} for ${extractedData.productName} in ${jobData.aspectRatio}.`
   );
 }
