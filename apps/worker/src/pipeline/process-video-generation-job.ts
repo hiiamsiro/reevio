@@ -11,6 +11,8 @@ import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestratio
 import { extractData } from '../ai-orchestrator/extract-data';
 import { createImageAssets } from '../image-pipeline/create-image-assets';
 import { createProviderFactory } from '../providers/create-provider-factory';
+import { generateSubtitles } from '../voice/generate-subtitles';
+import { generateTtsTrack } from '../voice/generate-tts';
 
 interface PersistedJobWithVideo {
   readonly id: string;
@@ -79,6 +81,8 @@ export async function processVideoGenerationJob(
 
     await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION');
     const orchestratedPlan = await createOrchestratedPlan(parsedPrompt, jobData);
+    const voiceoverUrl = generateTtsTrack(jobData.videoId, orchestratedPlan.voiceoverText);
+    const subtitlesUrl = generateSubtitles(jobData.videoId, orchestratedPlan.subtitleLines);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
     const generatedAssets = createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId);
@@ -87,7 +91,13 @@ export async function processVideoGenerationJob(
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO');
-    const videoResult = await generateVideoResult(jobData, orchestratedPlan, builtScenes);
+    const videoResult = await generateVideoResult(
+      jobData,
+      orchestratedPlan,
+      builtScenes,
+      voiceoverUrl,
+      subtitlesUrl
+    );
 
     await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT');
     await savePipelineResult(
@@ -97,6 +107,8 @@ export async function processVideoGenerationJob(
       orchestratedPlan,
       generatedAssets,
       builtScenes,
+      voiceoverUrl,
+      subtitlesUrl,
       videoResult
     );
   } catch (error: unknown) {
@@ -160,7 +172,9 @@ function buildScenes(
 function generateVideoResult(
   jobData: VideoGenerationJobData,
   orchestratedPlan: OrchestratedVideoPlan,
-  builtScenes: BuiltScene[]
+  builtScenes: BuiltScene[],
+  voiceoverUrl: string,
+  subtitlesUrl: string
 ): Promise<VideoGenerationResult> {
   const providerFactory = createProviderFactory();
   return providerFactory.generateVideo(jobData.provider, {
@@ -168,6 +182,8 @@ function generateVideoResult(
     aspectRatio: jobData.aspectRatio,
     orchestratedPlan,
     builtScenes,
+    voiceoverUrl,
+    subtitlesUrl,
   });
 }
 
@@ -178,6 +194,8 @@ async function savePipelineResult(
   orchestratedPlan: OrchestratedVideoPlan,
   generatedAssets: GeneratedImageAsset[],
   builtScenes: BuiltScene[],
+  voiceoverUrl: string,
+  subtitlesUrl: string,
   videoResult: VideoGenerationResult
 ): Promise<void> {
   await prismaClient.video.update({
@@ -194,10 +212,12 @@ async function savePipelineResult(
       assets: generatedAssets as unknown as Prisma.InputJsonValue,
       outputUrl: videoResult.url,
       previewUrl: videoResult.previewUrl,
+      voiceoverUrl,
+      subtitlesUrl,
       completedAt: new Date(),
       metadata: {
         durationInSeconds: videoResult.durationInSeconds,
-        queueVersion: 'phase-7',
+        queueVersion: 'phase-13',
       } as Prisma.InputJsonValue,
     },
   });

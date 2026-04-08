@@ -5,6 +5,8 @@ export interface GenerateVideoInput {
   readonly aspectRatio: VideoAspectRatio;
   readonly orchestratedPlan: OrchestratedVideoPlan;
   readonly builtScenes: BuiltScene[];
+  readonly voiceoverUrl: string;
+  readonly subtitlesUrl: string;
 }
 
 export interface VideoProvider {
