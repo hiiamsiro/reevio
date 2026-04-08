@@ -66,6 +66,23 @@ export interface GeneratedImageAsset {
   readonly score: number;
 }
 
+export interface GeneratedImageVariation {
+  readonly id: string;
+  readonly prompt: string;
+  readonly sourcePromptId: string;
+  readonly url: string;
+  readonly score: number;
+}
+
+export interface ValidatedImageVariation extends GeneratedImageVariation {
+  readonly isValid: boolean;
+  readonly validationIssues: string[];
+}
+
+export interface RankedImageVariation extends ValidatedImageVariation {
+  readonly rank: number;
+}
+
 export interface BuiltScene {
   readonly id: string;
   readonly headline: string;

@@ -9,6 +9,7 @@ import {
 } from '@reevio/types';
 import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestration';
 import { extractData } from '../ai-orchestrator/extract-data';
+import { createImageAssets } from '../image-pipeline/create-image-assets';
 
 interface PersistedJobWithVideo {
   readonly id: string;
@@ -79,7 +80,7 @@ export async function processVideoGenerationJob(
     const orchestratedPlan = await createOrchestratedPlan(parsedPrompt, jobData);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
-    const generatedAssets = generateImageAssets(orchestratedPlan, jobData.videoId);
+    const generatedAssets = createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId);
 
     await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES');
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
@@ -131,18 +132,6 @@ async function createOrchestratedPlan(
   jobData: VideoGenerationJobData
 ): Promise<OrchestratedVideoPlan> {
   return createAiOrchestration(parsedPrompt, jobData);
-}
-
-function generateImageAssets(
-  orchestratedPlan: OrchestratedVideoPlan,
-  videoId: string
-): GeneratedImageAsset[] {
-  return orchestratedPlan.imagePrompts.map((prompt, index) => ({
-    id: `${videoId}-asset-${index + 1}`,
-    prompt,
-    url: `storage://generated/images/${videoId}/image-${index + 1}.png`,
-    score: 0.9 - index * 0.1,
-  }));
 }
 
 function buildScenes(
