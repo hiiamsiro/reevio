@@ -11,7 +11,7 @@ export function generateVariations(
       id: `${videoId}-variation-${promptIndex + 1}-${variationIndex + 1}`,
       prompt,
       sourcePromptId: `${videoId}-prompt-${promptIndex + 1}`,
-      url: `storage://generated/images/${videoId}/prompt-${promptIndex + 1}-variation-${variationIndex + 1}.png`,
+      url: `images/${videoId}/prompt-${promptIndex + 1}-variation-${variationIndex + 1}.png`,
       score: calculateVariationScore(promptIndex, variationIndex),
     }))
   );

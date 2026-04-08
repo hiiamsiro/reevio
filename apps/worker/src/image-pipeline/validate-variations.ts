@@ -10,7 +10,7 @@ export function validateVariations(
       validationIssues.push('Prompt is too short.');
     }
 
-    if (!variation.url.startsWith('storage://generated/images/')) {
+    if (!variation.url.startsWith('images/')) {
       validationIssues.push('Variation URL uses an unsupported storage path.');
     }
 

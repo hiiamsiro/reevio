@@ -1,7 +1,13 @@
-export function generateTtsTrack(videoId: string, voiceoverText: string): string {
+import { LocalStorageService } from '../storage/local-storage.service';
+
+export async function generateTtsTrack(
+  videoId: string,
+  voiceoverText: string,
+  storageService: LocalStorageService
+): Promise<string> {
   if (voiceoverText.trim().length === 0) {
     throw new Error('Voiceover text is required for TTS generation.');
   }
 
-  return `storage://generated/audio/${videoId}.mp3`;
+  return storageService.saveTextFile(`audio/${videoId}.mp3`, voiceoverText);
 }

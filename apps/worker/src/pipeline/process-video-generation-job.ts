@@ -11,6 +11,7 @@ import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestratio
 import { extractData } from '../ai-orchestrator/extract-data';
 import { createImageAssets } from '../image-pipeline/create-image-assets';
 import { createProviderFactory } from '../providers/create-provider-factory';
+import { createLocalStorageService } from '../storage/local-storage.service';
 import { generateSubtitles } from '../voice/generate-subtitles';
 import { generateTtsTrack } from '../voice/generate-tts';
 
@@ -81,23 +82,31 @@ export async function processVideoGenerationJob(
 
     await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION');
     const orchestratedPlan = await createOrchestratedPlan(parsedPrompt, jobData);
-    const voiceoverUrl = generateTtsTrack(jobData.videoId, orchestratedPlan.voiceoverText);
-    const subtitlesUrl = generateSubtitles(jobData.videoId, orchestratedPlan.subtitleLines);
+    const providerFactory = createProviderFactory();
+    const storageService = createLocalStorageService();
+    const voiceoverUrl = await generateTtsTrack(
+      jobData.videoId,
+      orchestratedPlan.voiceoverText,
+      storageService
+    );
+    const subtitlesUrl = await generateSubtitles(
+      jobData.videoId,
+      orchestratedPlan.subtitleLines,
+      storageService
+    );
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
-    const generatedAssets = createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId);
+    const generatedAssets = await createImageAssets(
+      orchestratedPlan.imagePrompts,
+      jobData.videoId,
+      storageService
+    );
 
     await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES');
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO');
-    const videoResult = await generateVideoResult(
-      jobData,
-      orchestratedPlan,
-      builtScenes,
-      voiceoverUrl,
-      subtitlesUrl
-    );
+    const videoResult = await generateVideoResult(providerFactory, jobData, orchestratedPlan, builtScenes, voiceoverUrl, subtitlesUrl);
 
     await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT');
     await savePipelineResult(
@@ -170,13 +179,13 @@ function buildScenes(
 }
 
 function generateVideoResult(
+  providerFactory: ReturnType<typeof createProviderFactory>,
   jobData: VideoGenerationJobData,
   orchestratedPlan: OrchestratedVideoPlan,
   builtScenes: BuiltScene[],
   voiceoverUrl: string,
   subtitlesUrl: string
 ): Promise<VideoGenerationResult> {
-  const providerFactory = createProviderFactory();
   return providerFactory.generateVideo(jobData.provider, {
     videoId: jobData.videoId,
     aspectRatio: jobData.aspectRatio,

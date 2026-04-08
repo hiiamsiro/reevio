@@ -1,7 +1,19 @@
-export function generateSubtitles(videoId: string, subtitleLines: string[]): string {
+import { LocalStorageService } from '../storage/local-storage.service';
+
+export async function generateSubtitles(
+  videoId: string,
+  subtitleLines: string[],
+  storageService: LocalStorageService
+): Promise<string> {
   if (subtitleLines.length === 0) {
     throw new Error('Subtitle lines are required for subtitle generation.');
   }
 
-  return `storage://generated/subtitles/${videoId}.vtt`;
+  const subtitleContents = [
+    'WEBVTT',
+    '',
+    ...subtitleLines.map((line, index) => `${index + 1}\n00:00:0${index}.000 --> 00:00:0${index + 1}.500\n${line}\n`),
+  ].join('\n');
+
+  return storageService.saveTextFile(`subtitles/${videoId}.vtt`, subtitleContents);
 }
