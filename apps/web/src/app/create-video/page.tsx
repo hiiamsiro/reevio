@@ -18,6 +18,14 @@ interface VideoResponse {
   readonly subtitlesUrl?: string | null;
 }
 
+interface ProviderDefinition {
+  readonly name: string;
+  readonly label: string;
+  readonly description: string;
+  readonly status: 'available' | 'beta' | 'disabled';
+  readonly priceTier: 'free' | 'pro' | 'premium';
+}
+
 interface ApiEnvelope<T> {
   readonly success: boolean;
   readonly data: T;
@@ -30,12 +38,64 @@ export default function CreateVideoPage() {
   const [prompt, setPrompt] = useState(
     'Create an affiliate video for a compact espresso machine with strong hook and CTA.'
   );
-  const [provider, setProvider] = useState('veo');
+  const [provider, setProvider] = useState('remotion');
+  const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [video, setVideo] = useState<VideoResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredPrompt = useDeferredValue(prompt);
+  const selectedProvider =
+    providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProviders = async () => {
+      const response = await fetch(`${API_URL}/providers`, {
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as ApiEnvelope<ProviderDefinition[]>;
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? 'Failed to load providers.');
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      setProviders(payload.data);
+    };
+
+    void loadProviders().catch((error: unknown) => {
+      if (!isActive) {
+        return;
+      }
+
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Failed to load providers.');
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (providers.length === 0) {
+      return;
+    }
+
+    if (providers.some((providerDefinition) => providerDefinition.name === provider)) {
+      return;
+    }
+
+    setProvider(providers[0].name);
+  }, [provider, providers]);
 
   const refreshVideo = useEffectEvent(async (videoId: string) => {
     const response = await fetch(`${API_URL}/video/${videoId}`, {
@@ -145,13 +205,22 @@ export default function CreateVideoPage() {
                     className={styles.select}
                     value={provider}
                     onChange={(event) => setProvider(event.target.value)}
+                    disabled={providers.length === 0}
                   >
-                    <option value="veo">Veo</option>
-                    <option value="topview">Topview</option>
-                    <option value="grok">Grok</option>
-                    <option value="flow">Google Flow</option>
-                    <option value="remotion">Remotion</option>
+                    {providers.map((providerDefinition) => (
+                      <option key={providerDefinition.name} value={providerDefinition.name}>
+                        {providerDefinition.label} - {toPriceTierLabel(providerDefinition.priceTier)}
+                      </option>
+                    ))}
                   </select>
+                  {selectedProvider ? (
+                    <div className={styles.providerMeta}>
+                      <span className={styles.metaBadge}>
+                        {toPriceTierLabel(selectedProvider.priceTier)}
+                      </span>
+                      <span className={styles.metaBadge}>{selectedProvider.status}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className={styles.fieldGroup}>
@@ -172,7 +241,11 @@ export default function CreateVideoPage() {
                 </div>
               </div>
 
-              <button className={styles.submit} disabled={isPending} type="submit">
+              <button
+                className={styles.submit}
+                disabled={isPending || selectedProvider === null}
+                type="submit"
+              >
                 {isPending ? 'Generating...' : 'Generate video'}
               </button>
             </form>
@@ -184,7 +257,12 @@ export default function CreateVideoPage() {
 
             <div className={styles.previewCanvas}>
               <div className={styles.meta}>
-                <span className={styles.pill}>{provider}</span>
+                <span className={styles.pill}>{selectedProvider?.label ?? provider}</span>
+                {selectedProvider ? (
+                  <span className={styles.pill}>
+                    {toPriceTierLabel(selectedProvider.priceTier)}
+                  </span>
+                ) : null}
                 <span className={styles.pill}>{aspectRatio}</span>
                 {video?.status ? <span className={styles.pill}>{video.status}</span> : null}
               </div>
@@ -192,6 +270,9 @@ export default function CreateVideoPage() {
               <div>
                 <h3 className={styles.previewHeadline}>{video?.title ?? 'Prompt preview'}</h3>
                 <p className={styles.previewPrompt}>{video?.prompt ?? deferredPrompt}</p>
+                {selectedProvider ? (
+                  <p className={styles.providerDescription}>{selectedProvider.description}</p>
+                ) : null}
               </div>
 
               <div className={styles.statusGrid}>
@@ -221,4 +302,8 @@ export default function CreateVideoPage() {
       </div>
     </main>
   );
+}
+
+function toPriceTierLabel(priceTier: ProviderDefinition['priceTier']): string {
+  return priceTier.charAt(0).toUpperCase() + priceTier.slice(1);
 }
