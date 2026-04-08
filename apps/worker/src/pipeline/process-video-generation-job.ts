@@ -7,6 +7,8 @@ import {
   VideoGenerationJobData,
   VideoGenerationResult,
 } from '@reevio/types';
+import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestration';
+import { extractData } from '../ai-orchestrator/extract-data';
 
 interface PersistedJobWithVideo {
   readonly id: string;
@@ -71,10 +73,10 @@ export async function processVideoGenerationJob(
   });
 
   try {
-    const parsedPrompt = parsePrompt(persistedJob.video.prompt);
+    const parsedPrompt = await extractData(jobData.prompt);
 
     await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION');
-    const orchestratedPlan = orchestrateVideoPlan(parsedPrompt, jobData);
+    const orchestratedPlan = await createOrchestratedPlan(parsedPrompt, jobData);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
     const generatedAssets = generateImageAssets(orchestratedPlan, jobData.videoId);
@@ -124,95 +126,11 @@ export async function processVideoGenerationJob(
   }
 }
 
-function parsePrompt(prompt: string): ParsedPromptData {
-  const normalizedPrompt = prompt.trim();
-  const promptWords = normalizedPrompt.split(/\s+/).filter((word) => word.length > 0);
-
-  if (promptWords.length === 0) {
-    throw new Error('Cannot process an empty video prompt.');
-  }
-
-  const productName = promptWords.slice(0, 4).join(' ');
-  const highlights = promptWords.slice(0, 8).map((word) => word.replace(/[^\w-]/g, ''));
-
-  return {
-    rawPrompt: normalizedPrompt,
-    productName,
-    audience: 'affiliate shoppers',
-    primaryGoal: 'drive clicks and conversions',
-    highlights,
-  };
-}
-
-function orchestrateVideoPlan(
+async function createOrchestratedPlan(
   parsedPrompt: ParsedPromptData,
   jobData: VideoGenerationJobData
-): OrchestratedVideoPlan {
-  const title = `${parsedPrompt.productName} promo`;
-  const tagline = `Fast ${jobData.provider} video for ${parsedPrompt.audience}`;
-  const subtitleLines = [
-    `Meet ${parsedPrompt.productName}`,
-    'Show the benefit fast',
-    'End with a clear call to action',
-  ];
-
-  return {
-    title,
-    tagline,
-    script: [
-      `Hook the viewer with ${parsedPrompt.productName}.`,
-      'Show the main value prop in one sentence.',
-      'Finish with urgency and a direct call to action.',
-    ].join(' '),
-    beats: [
-      {
-        id: `${jobData.videoId}-beat-1`,
-        narration: `This is why ${parsedPrompt.productName} stands out.`,
-        visualDirection: 'Punchy opening with product close-up.',
-      },
-      {
-        id: `${jobData.videoId}-beat-2`,
-        narration: 'Highlight the strongest customer benefit in plain language.',
-        visualDirection: 'Feature showcase with bold text overlays.',
-      },
-      {
-        id: `${jobData.videoId}-beat-3`,
-        narration: 'Close with confidence and a simple CTA.',
-        visualDirection: 'Brand reveal with offer and CTA card.',
-      },
-    ],
-    scenes: [
-      {
-        id: `${jobData.videoId}-scene-1`,
-        headline: `Discover ${parsedPrompt.productName}`,
-        narration: `Meet ${parsedPrompt.productName} and see why it gets attention fast.`,
-        visualPrompt: `High-energy hero shot for ${parsedPrompt.productName} in ${jobData.aspectRatio}`,
-        durationInSeconds: 4,
-      },
-      {
-        id: `${jobData.videoId}-scene-2`,
-        headline: 'Show the payoff',
-        narration: 'Focus on the clearest transformation or value for the viewer.',
-        visualPrompt: `Lifestyle product showcase with affiliate-style callouts for ${parsedPrompt.productName}`,
-        durationInSeconds: 5,
-      },
-      {
-        id: `${jobData.videoId}-scene-3`,
-        headline: 'Close the sale',
-        narration: 'End with urgency, trust, and a direct call to click now.',
-        visualPrompt: `Call-to-action end card for ${parsedPrompt.productName}`,
-        durationInSeconds: 3,
-      },
-    ],
-    imagePrompts: [
-      `Hero image for ${parsedPrompt.productName}`,
-      `Feature showcase for ${parsedPrompt.productName}`,
-      `CTA card for ${parsedPrompt.productName}`,
-    ],
-    voiceoverText: `Meet ${parsedPrompt.productName}. See the value fast and click through for the full offer.`,
-    subtitleLines,
-    durationInSeconds: 12,
-  };
+): Promise<OrchestratedVideoPlan> {
+  return createAiOrchestration(parsedPrompt, jobData);
 }
 
 function generateImageAssets(
@@ -292,7 +210,7 @@ async function savePipelineResult(
       completedAt: new Date(),
       metadata: {
         durationInSeconds: videoResult.durationInSeconds,
-        queueVersion: 'phase-6',
+        queueVersion: 'phase-7',
       } as Prisma.InputJsonValue,
     },
   });
