@@ -81,7 +81,7 @@ export interface User {
   updatedAt: string;
 }
 
-export type UserPlan = 'free' | 'starter' | 'pro' | 'enterprise';
+export type UserPlan = 'free' | 'pro' | 'premium';
 
 // ─── API Primitives ────────────────────────────────────────────────────────────
 

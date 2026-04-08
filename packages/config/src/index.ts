@@ -42,14 +42,30 @@ export const envSchema = z.object({
   // Storage
   STORAGE_PATH: z.string().default('./storage'),
 
+  // Runtime
+  PORT: z.coerce.number().int().positive().default(4000),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+
+  // API URLs
+  NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+  API_URL: z.string().url().default('http://localhost:4000'),
+
+  // Auth
+  AUTH_SECRET: z.string().min(1).default('change-me-in-production'),
+  AUTH_URL: z.string().url().default('http://localhost:3000'),
+
   // Default provider
   VIDEO_PROVIDER: videoProviderSchema.default('remotion'),
 
   // Provider API Keys
+  REMOTION_LICENSE_KEY: z.string().optional(),
   TOPVIEW_API_KEY: z.string().optional(),
   GROK_API_KEY: z.string().optional(),
   GOOGLE_FLOW_API_KEY: z.string().optional(),
   VEO_API_KEY: z.string().optional(),
+
+  // Webhooks
+  WEBHOOK_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

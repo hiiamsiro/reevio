@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserPlan {
+  FREE
+  PRO
+  PREMIUM
+}
+
+enum VideoProvider {
+  REMOTION
+  TOPVIEW
+  GROK
+  FLOW
+  VEO
+}
+
+enum VideoStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobStep {
+  PARSE_PROMPT
+  AI_ORCHESTRATION
+  GENERATE_IMAGES
+  BUILD_SCENES
+  GENERATE_VIDEO
+  SAVE_RESULT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  plan      UserPlan @default(FREE)
+  credits   Int      @default(0)
+  videos    Video[]
+  jobs      Job[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Video {
+  id           String        @id @default(uuid())
+  userId       String
+  prompt       String        @db.Text
+  provider     VideoProvider
+  status       VideoStatus   @default(DRAFT)
+  aspectRatio  String        @default("9:16")
+  title        String?
+  script       String?       @db.Text
+  parsedPrompt Json?
+  scenes       Json?
+  imagePrompts Json?
+  assets       Json?
+  outputUrl    String?
+  previewUrl   String?
+  voiceoverUrl String?
+  subtitlesUrl String?
+  storagePath  String?
+  metadata     Json?
+  errorCode    String?
+  errorMessage String?       @db.Text
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs         Job[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+}
+
+model Job {
+  id           String        @id @default(uuid())
+  userId       String
+  videoId      String
+  provider     VideoProvider
+  status       JobStatus     @default(QUEUED)
+  step         JobStep       @default(PARSE_PROMPT)
+  attempts     Int           @default(0)
+  maxAttempts  Int           @default(4)
+  payload      Json?
+  resultUrl    String?
+  errorCode    String?
+  errorMessage String?       @db.Text
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video        Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([videoId])
+  @@index([status, step])
+  @@index([provider])
+}

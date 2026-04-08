@@ -1,0 +1,22 @@
+ALTER TABLE "Job" DROP CONSTRAINT IF EXISTS "Job_videoId_fkey";
+ALTER TABLE "Job" DROP CONSTRAINT IF EXISTS "Job_userId_fkey";
+ALTER TABLE "Video" DROP CONSTRAINT IF EXISTS "Video_userId_fkey";
+
+DROP INDEX IF EXISTS "Job_provider_idx";
+DROP INDEX IF EXISTS "Job_status_step_idx";
+DROP INDEX IF EXISTS "Job_videoId_idx";
+DROP INDEX IF EXISTS "Job_userId_idx";
+DROP INDEX IF EXISTS "Video_provider_idx";
+DROP INDEX IF EXISTS "Video_status_idx";
+DROP INDEX IF EXISTS "Video_userId_idx";
+DROP INDEX IF EXISTS "User_email_key";
+
+DROP TABLE IF EXISTS "Job";
+DROP TABLE IF EXISTS "Video";
+DROP TABLE IF EXISTS "User";
+
+DROP TYPE IF EXISTS "JobStep";
+DROP TYPE IF EXISTS "JobStatus";
+DROP TYPE IF EXISTS "VideoStatus";
+DROP TYPE IF EXISTS "VideoProvider";
+DROP TYPE IF EXISTS "UserPlan";
