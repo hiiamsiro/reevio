@@ -1,11 +1,11 @@
 import { VideoGenerationResult } from '@reevio/types';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { StorageService } from '../storage/storage.types';
 import { GenerateVideoInput, VideoProvider } from './video-provider.types';
 
 export class RemotionProvider implements VideoProvider {
   public readonly name = 'remotion' as const;
 
-  public constructor(private readonly storageService: LocalStorageService) {}
+  public constructor(private readonly storageService: StorageService) {}
 
   public async generateVideo(input: GenerateVideoInput): Promise<VideoGenerationResult> {
     const outputUrl = await this.storageService.saveTextFile(

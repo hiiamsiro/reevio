@@ -1,5 +1,5 @@
 import { GeneratedImageAsset } from '@reevio/types';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { StorageService } from '../storage/storage.types';
 import { generateVariations } from './generate-variations';
 import { rankVariations } from './rank-variations';
 import { selectBestVariations } from './select-best-variations';
@@ -8,7 +8,7 @@ import { validateVariations } from './validate-variations';
 export async function createImageAssets(
   imagePrompts: string[],
   videoId: string,
-  storageService: LocalStorageService
+  storageService: StorageService
 ): Promise<GeneratedImageAsset[]> {
   const variations = generateVariations(imagePrompts, videoId);
   const validatedVariations = validateVariations(variations);

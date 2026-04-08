@@ -1,5 +1,5 @@
 import { VideoGenerationResult } from '@reevio/types';
-import { LocalStorageService } from '../storage/local-storage.service';
+import { StorageService } from '../storage/storage.types';
 import { GenerateVideoInput, VideoProvider } from './video-provider.types';
 
 export class GoogleFlowProvider implements VideoProvider {
@@ -7,7 +7,7 @@ export class GoogleFlowProvider implements VideoProvider {
 
   public constructor(
     private readonly apiKey: string | undefined,
-    private readonly storageService: LocalStorageService
+    private readonly storageService: StorageService
   ) {}
 
   public async generateVideo(input: GenerateVideoInput): Promise<VideoGenerationResult> {

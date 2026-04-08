@@ -1,10 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { StorageService } from './storage.types';
 
 const PLACEHOLDER_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WnHCf8AAAAASUVORK5CYII=';
 
-export class LocalStorageService {
+export class LocalStorageService implements StorageService {
   public constructor(
     private readonly storagePath: string,
     private readonly publicBaseUrl: string
@@ -69,13 +70,6 @@ export class LocalStorageService {
   private getPublicPrefix(): string {
     return `${this.publicBaseUrl.replace(/\/$/, '')}/storage/`;
   }
-}
-
-export function createLocalStorageService(): LocalStorageService {
-  return new LocalStorageService(
-    process.env['STORAGE_PATH'] ?? './storage',
-    process.env['API_URL'] ?? 'http://localhost:4000'
-  );
 }
 
 function parseJsonArtifact(fileContents: string, publicUrl: string): unknown {

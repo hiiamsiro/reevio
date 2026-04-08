@@ -11,7 +11,7 @@ import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestratio
 import { extractData } from '../ai-orchestrator/extract-data';
 import { createImageAssets } from '../image-pipeline/create-image-assets';
 import { createProviderFactory } from '../providers/create-provider-factory';
-import { createLocalStorageService } from '../storage/local-storage.service';
+import { createStorageService } from '../storage/storage.factory';
 import { getCachedVideoPipelineState } from './video-cache';
 import { generateSubtitles } from '../voice/generate-subtitles';
 import { generateTtsTrack } from '../voice/generate-tts';
@@ -79,7 +79,7 @@ export async function processVideoGenerationJob(
   });
 
   try {
-    const storageService = createLocalStorageService();
+    const storageService = createStorageService();
     const cachedVideoPipelineState = await getCachedVideoPipelineState(prismaClient, jobData);
     const parsedPrompt = cachedVideoPipelineState?.parsedPrompt ?? (await extractData(jobData.prompt));
 

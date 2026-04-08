@@ -2,12 +2,12 @@ import { ProviderFactory } from './provider-factory';
 import { GoogleFlowProvider } from './google-flow-provider';
 import { GrokProvider } from './grok-provider';
 import { RemotionProvider } from './remotion-provider';
-import { createLocalStorageService } from '../storage/local-storage.service';
+import { createStorageService } from '../storage/storage.factory';
 import { TopviewProvider } from './topview-provider';
 import { VeoProvider } from './veo-provider';
 
 export function createProviderFactory(): ProviderFactory {
-  const storageService = createLocalStorageService();
+  const storageService = createStorageService();
 
   return new ProviderFactory([
     new RemotionProvider(storageService),

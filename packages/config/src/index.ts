@@ -40,7 +40,9 @@ export const envSchema = z.object({
   REDIS_URL: z.string().min(1),
 
   // Storage
+  STORAGE_DRIVER: z.enum(['local']).default('local'),
   STORAGE_PATH: z.string().default('./storage'),
+  STORAGE_PUBLIC_BASE_URL: z.string().url().default('http://localhost:4000'),
 
   // Runtime
   PORT: z.coerce.number().int().positive().default(4000),

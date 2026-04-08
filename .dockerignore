@@ -1,0 +1,16 @@
+node_modules
+.pnpm
+.turbo
+.git
+.gitignore
+.codex
+.claude
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+packages/*/node_modules
+coverage
+storage
+postgres_data
+redis_data
+*.log

@@ -1,9 +1,9 @@
-import { LocalStorageService } from '../storage/local-storage.service';
+import { StorageService } from '../storage/storage.types';
 
 export async function generateTtsTrack(
   videoId: string,
   voiceoverText: string,
-  storageService: LocalStorageService
+  storageService: StorageService
 ): Promise<string> {
   if (voiceoverText.trim().length === 0) {
     throw new Error('Voiceover text is required for TTS generation.');

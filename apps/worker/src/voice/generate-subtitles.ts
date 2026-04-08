@@ -1,9 +1,9 @@
-import { LocalStorageService } from '../storage/local-storage.service';
+import { StorageService } from '../storage/storage.types';
 
 export async function generateSubtitles(
   videoId: string,
   subtitleLines: string[],
-  storageService: LocalStorageService
+  storageService: StorageService
 ): Promise<string> {
   if (subtitleLines.length === 0) {
     throw new Error('Subtitle lines are required for subtitle generation.');
