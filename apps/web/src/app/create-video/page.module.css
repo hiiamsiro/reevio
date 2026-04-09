@@ -407,6 +407,11 @@
   transform: none;
 }
 
+.navLink:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
 .previewCanvas {
   display: grid;
   gap: 1rem;

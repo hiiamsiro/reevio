@@ -7,40 +7,26 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { CurrentUser } from '../auth/auth.decorator';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { VideoNotFoundError } from './video.errors';
 import { generateVideoRequestSchema, videoIdParamSchema } from './video.schemas';
 import { VideoService } from './video.service';
 
 @Controller()
 export class VideoController {
-  public constructor(
-    private readonly prismaService: PrismaService,
-    private readonly videoService: VideoService
-  ) {}
+  public constructor(private readonly videoService: VideoService) {}
 
   @Post('generate-video')
-  public async generateVideo(@Body() body: unknown) {
+  public async generateVideo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: unknown
+  ) {
     const parsedBody = generateVideoRequestSchema.safeParse(body);
 
     if (!parsedBody.success) {
       throw new BadRequestException(parsedBody.error.flatten());
     }
-
-    const user = await this.prismaService.user.upsert({
-      where: {
-        email: parsedBody.data.userEmail,
-      },
-      update: {
-        ...(parsedBody.data.userName ? { name: parsedBody.data.userName } : {}),
-      },
-      create: {
-        email: parsedBody.data.userEmail,
-        plan: 'FREE',
-        credits: 25,
-        ...(parsedBody.data.userName ? { name: parsedBody.data.userName } : {}),
-      },
-    });
 
     const video = await this.videoService.createVideo({
       userId: user.id,
@@ -57,7 +43,10 @@ export class VideoController {
   }
 
   @Get('video/:id')
-  public async getVideo(@Param() params: unknown) {
+  public async getVideo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param() params: unknown
+  ) {
     const parsedParams = videoIdParamSchema.safeParse(params);
 
     if (!parsedParams.success) {
@@ -65,7 +54,7 @@ export class VideoController {
     }
 
     try {
-      const video = await this.videoService.getVideo(parsedParams.data.id);
+      const video = await this.videoService.getVideo(parsedParams.data.id, user.id);
 
       return {
         success: true,

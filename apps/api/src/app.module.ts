@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
 import { JobModule } from './job/job.module';
 import { ProviderModule } from './provider/provider.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,6 +15,7 @@ import { VideoModule } from './video/video.module';
       ignoreEnvFile: false,
     }),
     PrismaModule,
+    AuthModule,
     ProviderModule,
     JobModule,
     VideoModule,

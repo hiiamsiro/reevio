@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import styles from './page.module.css';
 
@@ -29,11 +29,16 @@ interface ProviderDefinition {
 
 interface ApiEnvelope<T> {
   readonly success: boolean;
-  readonly data: T;
+  readonly data: T | null;
   readonly error: string | null;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+interface CurrentUser {
+  readonly id: string;
+  readonly email: string;
+  readonly plan: string;
+  readonly credits: number;
+}
 
 const promptPresets = [
   'Create a vertical sneaker launch ad with chrome lighting, fast macro cuts, and a final 15% off CTA.',
@@ -55,6 +60,7 @@ const workflowNotes = [
 ];
 
 export default function CreateVideoPage() {
+  const router = useRouter();
   const [prompt, setPrompt] = useState(
     'Create an affiliate video for a compact espresso machine with strong hook and CTA.'
   );
@@ -62,8 +68,10 @@ export default function CreateVideoPage() {
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [video, setVideo] = useState<VideoResponse | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const deferredPrompt = useDeferredValue(prompt);
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
@@ -71,13 +79,42 @@ export default function CreateVideoPage() {
   useEffect(() => {
     let isActive = true;
 
+    const loadSession = async () => {
+      const response = await fetch('/api/auth/session', {
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as ApiEnvelope<CurrentUser>;
+
+      if (response.status === 401) {
+        router.push('/login');
+        router.refresh();
+        return;
+      }
+
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.error ?? 'Failed to load session.');
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      setCurrentUser(payload.data);
+    };
+
     const loadProviders = async () => {
-      const response = await fetch(`${API_URL}/providers`, {
+      const response = await fetch('/api/providers', {
         cache: 'no-store',
       });
       const payload = (await response.json()) as ApiEnvelope<ProviderDefinition[]>;
 
-      if (!response.ok) {
+      if (response.status === 401) {
+        router.push('/login');
+        router.refresh();
+        return;
+      }
+
+      if (!response.ok || !payload.success || !payload.data) {
         throw new Error(payload.error ?? 'Failed to load providers.');
       }
 
@@ -88,7 +125,7 @@ export default function CreateVideoPage() {
       setProviders(payload.data);
     };
 
-    void loadProviders().catch((error: unknown) => {
+    void Promise.all([loadSession(), loadProviders()]).catch((error: unknown) => {
       if (!isActive) {
         return;
       }
@@ -127,12 +164,18 @@ export default function CreateVideoPage() {
     }
 
     const refreshVideo = async (): Promise<void> => {
-      const response = await fetch(`${API_URL}/video/${video.id}`, {
+      const response = await fetch(`/api/video/${video.id}`, {
         cache: 'no-store',
       });
       const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
 
-      if (!response.ok) {
+      if (response.status === 401) {
+        router.push('/login');
+        router.refresh();
+        return;
+      }
+
+      if (!response.ok || !payload.success || !payload.data) {
         throw new Error(payload.error ?? 'Failed to refresh video.');
       }
 
@@ -159,13 +202,12 @@ export default function CreateVideoPage() {
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(`${API_URL}/generate-video`, {
+      const response = await fetch('/api/video', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          userEmail: 'demo@reevio.app',
           prompt,
           provider,
           aspectRatio,
@@ -174,13 +216,34 @@ export default function CreateVideoPage() {
 
       const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
 
-      if (!response.ok) {
+      if (response.status === 401) {
+        router.push('/login');
+        router.refresh();
+        return;
+      }
+
+      if (!response.ok || !payload.success || !payload.data) {
         setErrorMessage(payload.error ?? 'Failed to generate video.');
         return;
       }
 
       setVideo(payload.data);
     });
+  };
+
+  const handleLogout = async (): Promise<void> => {
+    setIsLoggingOut(true);
+    setErrorMessage(null);
+
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+    } finally {
+      router.push('/login');
+      router.refresh();
+      setIsLoggingOut(false);
+    }
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -202,10 +265,17 @@ export default function CreateVideoPage() {
           </div>
 
           <div className={styles.navActions}>
-            <Link className={styles.navLink} href="/">
-              Back to landing
-            </Link>
-            <span className={styles.liveBadge}>Demo workspace: `demo@reevio.app`</span>
+            <span className={styles.liveBadge}>
+              {currentUser ? `${currentUser.email} · ${currentUser.plan}` : 'Loading workspace'}
+            </span>
+            <button
+              className={styles.navLink}
+              onClick={handleLogout}
+              type="button"
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? 'Signing out...' : 'Log out'}
+            </button>
           </div>
         </header>
 
@@ -255,8 +325,10 @@ export default function CreateVideoPage() {
                 <h2 className={styles.cardTitle}>Shape the brief before you spend credits.</h2>
               </div>
               <div className={styles.metaCluster}>
-                <span className={styles.metaBadge}>Shared demo</span>
-                <span className={styles.metaBadge}>Live API</span>
+                <span className={styles.metaBadge}>
+                  {currentUser ? `${currentUser.credits} credits` : 'Loading credits'}
+                </span>
+                <span className={styles.metaBadge}>Authenticated session</span>
               </div>
             </div>
 

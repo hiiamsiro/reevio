@@ -74,13 +74,14 @@ export class VideoService {
       throw new VideoQueueError(videoRecord.id, errorMessage);
     }
 
-    return this.getVideo(videoRecord.id);
+    return this.getVideo(videoRecord.id, input.userId);
   }
 
-  public async getVideo(videoId: string): Promise<VideoRecord> {
-    const videoRecord = await this.prismaService.video.findUnique({
+  public async getVideo(videoId: string, userId: string): Promise<VideoRecord> {
+    const videoRecord = await this.prismaService.video.findFirst({
       where: {
         id: videoId,
+        userId,
       },
     });
 
@@ -91,8 +92,11 @@ export class VideoService {
     return toVideoRecord(videoRecord);
   }
 
-  public async listVideos(): Promise<VideoRecord[]> {
+  public async listVideos(userId: string): Promise<VideoRecord[]> {
     const videoRecords = await this.prismaService.video.findMany({
+      where: {
+        userId,
+      },
       orderBy: {
         createdAt: 'desc',
       },

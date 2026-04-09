@@ -83,6 +83,12 @@ export interface User {
 
 export type UserPlan = 'free' | 'pro' | 'premium';
 
+export interface AuthSession {
+  user: User;
+  accessToken: string;
+  expiresAt: string;
+}
+
 // ─── API Primitives ────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T = unknown> {

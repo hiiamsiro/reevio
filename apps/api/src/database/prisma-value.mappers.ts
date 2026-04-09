@@ -1,7 +1,4 @@
-import {
-  VideoAspectRatio,
-  VideoGenerationStep,
-} from '@reevio/types';
+import { UserPlan, VideoAspectRatio, VideoGenerationStep } from '@reevio/types';
 import { JobStatus } from '../job/job.types';
 import { VideoProviderName } from '../provider/provider.types';
 import { VideoStatus } from '../video/video.types';
@@ -16,6 +13,7 @@ type PrismaJobStep =
   | 'BUILD_SCENES'
   | 'GENERATE_VIDEO'
   | 'SAVE_RESULT';
+type PrismaUserPlan = 'FREE' | 'PRO' | 'PREMIUM';
 
 const PRISMA_VIDEO_PROVIDER_BY_APP: Record<VideoProviderName, PrismaVideoProvider> = {
   remotion: 'REMOTION',
@@ -55,6 +53,12 @@ const APP_JOB_STEP_BY_PRISMA: Record<PrismaJobStep, VideoGenerationStep> = {
   BUILD_SCENES: 'buildScenes',
   GENERATE_VIDEO: 'generateVideo',
   SAVE_RESULT: 'saveResult',
+};
+
+const APP_USER_PLAN_BY_PRISMA: Record<PrismaUserPlan, UserPlan> = {
+  FREE: 'free',
+  PRO: 'pro',
+  PREMIUM: 'premium',
 };
 
 export function toPrismaVideoProvider(providerName: VideoProviderName): PrismaVideoProvider {
@@ -112,4 +116,14 @@ export function toVideoAspectRatio(aspectRatio: string): VideoAspectRatio {
   }
 
   return aspectRatio;
+}
+
+export function toAppUserPlan(plan: string): UserPlan {
+  const mappedPlan = APP_USER_PLAN_BY_PRISMA[plan as PrismaUserPlan];
+
+  if (!mappedPlan) {
+    throw new Error(`Unsupported persisted user plan "${plan}".`);
+  }
+
+  return mappedPlan;
 }
