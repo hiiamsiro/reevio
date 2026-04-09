@@ -1,19 +1,25 @@
 :root {
-  --color-ink-950: #181311;
-  --color-ink-800: #3a2e28;
-  --color-sand-300: #e8d9c5;
-  --color-sand-100: #f8f0e4;
-  --color-cream: #fffaf3;
-  --color-ember: #b5542f;
-  --color-gold: #d39a3f;
-  --color-mint: #7fb8a4;
-  --color-danger: #a43d2f;
-  --shadow-soft: 0 24px 60px rgba(34, 22, 16, 0.14);
-  --shadow-card: 0 18px 32px rgba(24, 19, 17, 0.08);
+  --color-bg: #050816;
+  --color-surface: #0a0e1f;
+  --color-surface-elevated: #12182f;
+  --color-border-soft: rgba(151, 163, 255, 0.16);
+  --color-border-strong: rgba(151, 163, 255, 0.24);
+  --color-text-primary: #f5f7ff;
+  --color-text-secondary: #b2bddf;
+  --color-text-muted: #7d89ae;
+  --color-accent-cyan: #74e6ff;
+  --color-accent-blue: #7a7dff;
+  --color-accent-orange: #ff8c6b;
+  --color-accent-pink: #ff5db1;
+  --color-danger: #ff7d91;
+  --shadow-soft: 0 24px 60px rgba(2, 6, 20, 0.3);
+  --shadow-card: 0 18px 32px rgba(2, 6, 20, 0.24);
+  --shadow-panel: 0 30px 80px rgba(2, 6, 20, 0.36);
   --radius-xs: 10px;
   --radius-sm: 16px;
   --radius-md: 24px;
   --radius-lg: 36px;
+  --radius-xl: 999px;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
@@ -21,8 +27,8 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-14: 3.5rem;
-  --font-display: 'Palatino Linotype', 'Book Antiqua', serif;
-  --font-body: 'Trebuchet MS', 'Gill Sans', sans-serif;
+  --font-display: 'Space Grotesk';
+  --font-body: 'Plus Jakarta Sans';
   --type-step--1: clamp(0.88rem, 0.84rem + 0.2vw, 0.96rem);
   --type-step-0: clamp(1rem, 0.95rem + 0.25vw, 1.08rem);
   --type-step-1: clamp(1.2rem, 1.05rem + 0.6vw, 1.45rem);
@@ -41,19 +47,25 @@
 }
 
 html {
-  color-scheme: light;
+  color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: var(--font-body);
+  font-family: var(--font-body), sans-serif;
   font-size: var(--type-step-0);
-  color: var(--color-ink-950);
+  color: var(--color-text-primary);
   background:
-    radial-gradient(circle at top left, rgba(211, 154, 63, 0.24), transparent 28%),
-    radial-gradient(circle at top right, rgba(127, 184, 164, 0.2), transparent 24%),
-    linear-gradient(180deg, var(--color-cream), #f3e4d1);
+    radial-gradient(circle at top left, rgba(54, 214, 255, 0.15), transparent 24%),
+    radial-gradient(circle at top right, rgba(140, 93, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #050816, #070b18 45%, #050816);
+}
+
+::selection {
+  background: rgba(116, 230, 255, 0.28);
+  color: var(--color-text-primary);
 }
 
 a {

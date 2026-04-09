@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import styles from './page.module.css';
 
@@ -33,6 +34,25 @@ interface ApiEnvelope<T> {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+
+const promptPresets = [
+  'Create a vertical sneaker launch ad with chrome lighting, fast macro cuts, and a final 15% off CTA.',
+  'Generate a skincare promo with soft glass textures, ingredient callouts, and calm premium narration.',
+  'Build a SaaS feature reveal video with bold captions, UI zoom transitions, and a founder-style voiceover.',
+];
+
+const styleModes = [
+  'Cinematic neon',
+  'Clean product studio',
+  'Creator UGC',
+  'Luxury editorial',
+];
+
+const workflowNotes = [
+  'Credits only burn when a render starts.',
+  'Preview state refreshes every 2.5 seconds.',
+  'Voiceover and subtitles appear after orchestration.',
+];
 
 export default function CreateVideoPage() {
   const [prompt, setPrompt] = useState(
@@ -163,24 +183,96 @@ export default function CreateVideoPage() {
     });
   };
 
+  const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
+
   return (
     <main className={styles.page}>
+      <div className={styles.backdrop} />
+      <div className={styles.glowOne} />
+      <div className={styles.glowTwo} />
+
       <div className={styles.shell}>
-        <header className={styles.hero}>
-          <p className={styles.eyebrow}>Create Video</p>
-          <h1 className={styles.title}>Turn one affiliate brief into a ready-to-render video flow.</h1>
-          <p className={styles.subtitle}>
-            Reevio writes the script, builds scenes, picks images, adds voice and subtitles, then
-            routes the render through your selected provider chain.
-          </p>
+        <header className={styles.nav}>
+          <div className={styles.brandLockup}>
+            <span className={styles.brandMark} aria-hidden="true" />
+            <div>
+              <p className={styles.brandName}>Reevio Studio</p>
+              <p className={styles.brandMeta}>Create video workspace</p>
+            </div>
+          </div>
+
+          <div className={styles.navActions}>
+            <Link className={styles.navLink} href="/">
+              Back to landing
+            </Link>
+            <span className={styles.liveBadge}>Demo workspace: `demo@reevio.app`</span>
+          </div>
         </header>
+
+        <section className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>Create video</p>
+            <h1 className={styles.title}>Generate, preview, and route renders inside the same visual system.</h1>
+            <p className={styles.subtitle}>
+              This editor now follows the same dark glass surface as the landing page, with vibrant
+              accents for prompts, provider state, and render feedback.
+            </p>
+
+            <div className={styles.quickRow}>
+              {styleModes.map((mode) => (
+                <span className={styles.quickPill} key={mode}>
+                  {mode}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.heroPanel}>
+            <div className={styles.heroMetric}>
+              <span>Active provider</span>
+              <strong>{selectedProvider?.label ?? 'Loading providers'}</strong>
+            </div>
+            <div className={styles.heroMetric}>
+              <span>Estimated credits</span>
+              <strong>{selectedProvider ? toCreditEstimate(selectedProvider.priceTier) : '--'}</strong>
+            </div>
+            <div className={styles.heroMetric}>
+              <span>Aspect ratio</span>
+              <strong>{aspectRatio}</strong>
+            </div>
+            <div className={styles.heroMetric}>
+              <span>Render status</span>
+              <strong>{activeStatus}</strong>
+            </div>
+          </div>
+        </section>
 
         <div className={styles.grid}>
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Prompt Studio</h2>
-            <p className={styles.cardText}>
-              This page uses the shared demo workspace user `demo@reevio.app`.
-            </p>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.sectionEyebrow}>Prompt studio</p>
+                <h2 className={styles.cardTitle}>Shape the brief before you spend credits.</h2>
+              </div>
+              <div className={styles.metaCluster}>
+                <span className={styles.metaBadge}>Shared demo</span>
+                <span className={styles.metaBadge}>Live API</span>
+              </div>
+            </div>
+
+            <div className={styles.presetGrid}>
+              {promptPresets.map((preset, index) => (
+                <button
+                  className={styles.presetCard}
+                  key={preset}
+                  onClick={() => setPrompt(preset)}
+                  type="button"
+                >
+                  <span className={styles.presetIndex}>0{index + 1}</span>
+                  <span>{preset}</span>
+                </button>
+              ))}
+            </div>
 
             <form className={styles.form} onSubmit={handleSubmit}>
               <div className={styles.fieldGroup}>
@@ -213,6 +305,7 @@ export default function CreateVideoPage() {
                       </option>
                     ))}
                   </select>
+
                   {selectedProvider ? (
                     <div className={styles.providerMeta}>
                       <span className={styles.metaBadge}>
@@ -225,7 +318,7 @@ export default function CreateVideoPage() {
 
                 <div className={styles.fieldGroup}>
                   <label className={styles.label} htmlFor="aspectRatio">
-                    Aspect Ratio
+                    Aspect ratio
                   </label>
                   <select
                     id="aspectRatio"
@@ -241,38 +334,56 @@ export default function CreateVideoPage() {
                 </div>
               </div>
 
+              {selectedProvider ? (
+                <div className={styles.providerCard}>
+                  <div>
+                    <p className={styles.providerLabel}>Provider profile</p>
+                    <h3>{selectedProvider.label}</h3>
+                  </div>
+                  <p>{selectedProvider.description}</p>
+                </div>
+              ) : null}
+
               <button
                 className={styles.submit}
                 disabled={isPending || selectedProvider === null}
                 type="submit"
               >
-                {isPending ? 'Generating...' : 'Generate video'}
+                {isPending ? 'Generating preview...' : 'Generate video'}
               </button>
             </form>
           </section>
 
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Preview</h2>
-            <p className={styles.cardText}>Live status from the API route with worker-backed updates.</p>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.sectionEyebrow}>Live preview</p>
+                <h2 className={styles.cardTitle}>See the render state update in real time.</h2>
+              </div>
+            </div>
 
             <div className={styles.previewCanvas}>
-              <div className={styles.meta}>
-                <span className={styles.pill}>{selectedProvider?.label ?? provider}</span>
-                {selectedProvider ? (
-                  <span className={styles.pill}>
-                    {toPriceTierLabel(selectedProvider.priceTier)}
-                  </span>
-                ) : null}
-                <span className={styles.pill}>{aspectRatio}</span>
-                {video?.status ? <span className={styles.pill}>{video.status}</span> : null}
+              <div className={styles.previewTop}>
+                <div className={styles.meta}>
+                  <span className={styles.pill}>{selectedProvider?.label ?? provider}</span>
+                  {selectedProvider ? (
+                    <span className={styles.pill}>
+                      {toPriceTierLabel(selectedProvider.priceTier)}
+                    </span>
+                  ) : null}
+                  <span className={styles.pill}>{aspectRatio}</span>
+                  <span className={styles.pill}>{activeStatus}</span>
+                </div>
+                <span className={styles.previewSignal}>Auto refresh every 2.5s</span>
               </div>
 
-              <div>
-                <h3 className={styles.previewHeadline}>{video?.title ?? 'Prompt preview'}</h3>
-                <p className={styles.previewPrompt}>{video?.prompt ?? deferredPrompt}</p>
-                {selectedProvider ? (
-                  <p className={styles.providerDescription}>{selectedProvider.description}</p>
-                ) : null}
+              <div className={styles.previewScreen}>
+                <div className={styles.previewGlow} />
+                <div className={styles.previewOverlay}>
+                  <span className={styles.previewLabel}>Current prompt</span>
+                  <h3 className={styles.previewHeadline}>{video?.title ?? 'Prompt preview'}</h3>
+                  <p className={styles.previewPrompt}>{video?.prompt ?? deferredPrompt}</p>
+                </div>
               </div>
 
               <div className={styles.statusGrid}>
@@ -282,20 +393,34 @@ export default function CreateVideoPage() {
                 </div>
                 <div className={styles.statusRow}>
                   <span className={styles.statusLabel}>Output URL</span>
-                  <span className={styles.statusValue}>{video?.outputUrl ?? 'Rendering pipeline not started yet'}</span>
+                  <span className={styles.statusValue}>
+                    {video?.outputUrl ?? 'Rendering pipeline not started yet'}
+                  </span>
                 </div>
                 <div className={styles.statusRow}>
                   <span className={styles.statusLabel}>Voiceover</span>
-                  <span className={styles.statusValue}>{video?.voiceoverUrl ?? 'Will appear after orchestration'}</span>
+                  <span className={styles.statusValue}>
+                    {video?.voiceoverUrl ?? 'Will appear after orchestration'}
+                  </span>
                 </div>
                 <div className={styles.statusRow}>
                   <span className={styles.statusLabel}>Subtitles</span>
-                  <span className={styles.statusValue}>{video?.subtitlesUrl ?? 'Will appear after orchestration'}</span>
+                  <span className={styles.statusValue}>
+                    {video?.subtitlesUrl ?? 'Will appear after orchestration'}
+                  </span>
                 </div>
               </div>
 
               {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
               {video?.errorMessage ? <p className={styles.error}>{video.errorMessage}</p> : null}
+            </div>
+
+            <div className={styles.noteGrid}>
+              {workflowNotes.map((note) => (
+                <div className={styles.noteCard} key={note}>
+                  {note}
+                </div>
+              ))}
             </div>
           </section>
         </div>
@@ -306,4 +431,16 @@ export default function CreateVideoPage() {
 
 function toPriceTierLabel(priceTier: ProviderDefinition['priceTier']): string {
   return priceTier.charAt(0).toUpperCase() + priceTier.slice(1);
+}
+
+function toCreditEstimate(priceTier: ProviderDefinition['priceTier']): string {
+  if (priceTier === 'free') {
+    return '8-12 credits';
+  }
+
+  if (priceTier === 'pro') {
+    return '18-24 credits';
+  }
+
+  return '28-40 credits';
 }

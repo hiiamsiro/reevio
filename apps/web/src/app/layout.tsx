@@ -1,15 +1,26 @@
 import type { Metadata } from 'next';
+import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-body',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+});
+
 export const metadata: Metadata = {
-  title: 'Reevio',
-  description: 'AI-powered affiliate video generation platform',
+  title: 'Reevio Studio',
+  description: 'AI video generation platform for prompts, previews, styles, and credit-based rendering.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}>{children}</body>
     </html>
   );
 }
