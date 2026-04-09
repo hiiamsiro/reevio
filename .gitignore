@@ -43,11 +43,7 @@ npm-debug.log*
 pnpm-debug.log*
 
 # Claude Code
-CLAUDE.md
 CLAUDE.local.md
-.claude/
-.codex/
-AGENTS.md
 
 # Misc
 *.pid
