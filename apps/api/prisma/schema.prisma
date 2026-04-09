@@ -45,17 +45,24 @@ enum JobStep {
   SAVE_RESULT
 }
 
+enum CreditPurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id              String           @id @default(uuid())
+  email           String           @unique
   passwordHash String?
-  name      String?
-  plan      UserPlan @default(FREE)
-  credits   Int      @default(0)
-  videos    Video[]
-  jobs      Job[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name            String?
+  plan            UserPlan         @default(FREE)
+  credits         Int              @default(0)
+  videos          Video[]
+  jobs            Job[]
+  creditPurchases CreditPurchase[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Video {
@@ -117,4 +124,23 @@ model Job {
   @@index([videoId])
   @@index([status, step])
   @@index([provider])
+}
+
+model CreditPurchase {
+  id               String               @id @default(uuid())
+  userId           String
+  planId           String
+  planName         String
+  credits          Int
+  priceCents       Int
+  currency         String               @default("USD")
+  status           CreditPurchaseStatus @default(PENDING)
+  paymentReference String?              @unique
+  completedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
 }

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { SESSION_COOKIE_NAME } from '@/lib/auth-session';
 
 const AUTH_ROUTES = new Set(['/login', '/register']);
-const PROTECTED_ROUTES = ['/create-video'];
+const PROTECTED_ROUTES = ['/create-video', '/pricing'];
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;

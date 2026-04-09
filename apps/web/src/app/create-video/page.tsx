@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import styles from './page.module.css';
 
@@ -313,6 +314,9 @@ export default function CreateVideoPage() {
             >
               {isLoggingOut ? 'Signing out...' : 'Log out'}
             </button>
+            <Link className={styles.navLink} href="/pricing">
+              Buy credits
+            </Link>
           </div>
         </header>
 
@@ -469,9 +473,9 @@ export default function CreateVideoPage() {
                   <p>
                     {hasEnoughCredits
                       ? isLowCredit
-                        ? `You have ${currentUser.credits} credits left, so you are close to your threshold for ${selectedProvider.label}.`
+                        ? `You have ${currentUser.credits} credits left, so you are close to your threshold for ${selectedProvider.label}. Open Buy credits when you need a top-up.`
                         : `You have ${currentUser.credits} credits available for this ${selectedProvider.creditCost}-credit render.`
-                      : `You need ${selectedProvider.creditCost} credits but only have ${currentUser.credits}. Failed final renders refund automatically.`}
+                      : `You need ${selectedProvider.creditCost} credits but only have ${currentUser.credits}. Failed final renders refund automatically, and you can top up from Buy credits.`}
                   </p>
                 </div>
               ) : null}
