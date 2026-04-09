@@ -7,6 +7,7 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     description: 'Template-driven renderer for reliable baseline video output.',
     status: 'available',
     priceTier: 'free',
+    creditCost: 8,
     capabilities: {
       supportsSubtitles: true,
       supportsVoiceover: true,
@@ -20,6 +21,7 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     description: 'Marketing-focused video generation tuned for affiliate assets.',
     status: 'available',
     priceTier: 'pro',
+    creditCost: 18,
     capabilities: {
       supportsSubtitles: true,
       supportsVoiceover: true,
@@ -33,6 +35,7 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     description: 'Fast experimental provider for scripted promo video output.',
     status: 'beta',
     priceTier: 'pro',
+    creditCost: 18,
     capabilities: {
       supportsSubtitles: true,
       supportsVoiceover: true,
@@ -46,6 +49,7 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     description: 'High-fidelity creative generation optimized for cinematic scenes.',
     status: 'beta',
     priceTier: 'premium',
+    creditCost: 28,
     capabilities: {
       supportsSubtitles: true,
       supportsVoiceover: true,
@@ -59,6 +63,7 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     description: 'Premium text-to-video generation for flagship renders.',
     status: 'beta',
     priceTier: 'premium',
+    creditCost: 28,
     capabilities: {
       supportsSubtitles: true,
       supportsVoiceover: true,

@@ -11,11 +11,18 @@ export interface CreateVideoInput {
   readonly aspectRatio: VideoAspectRatio;
 }
 
+export interface VideoCreationResult {
+  readonly video: VideoRecord;
+  readonly remainingCredits: number;
+  readonly creditsCharged: boolean;
+}
+
 export interface VideoRecord {
   readonly id: string;
   readonly userId: string;
   readonly prompt: string;
   readonly provider: VideoProviderName;
+  readonly creditCost: number;
   readonly aspectRatio: VideoAspectRatio;
   readonly status: VideoStatus;
   readonly title: string | null;

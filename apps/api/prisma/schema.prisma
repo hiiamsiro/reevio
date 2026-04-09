@@ -64,6 +64,7 @@ model Video {
   prompt       String        @db.Text
   provider     VideoProvider
   status       VideoStatus   @default(DRAFT)
+  creditCost   Int           @default(0)
   aspectRatio  String        @default("9:16")
   title        String?
   script       String?       @db.Text
@@ -79,6 +80,8 @@ model Video {
   metadata     Json?
   errorCode    String?
   errorMessage String?       @db.Text
+  creditChargedAt DateTime?
+  creditRefundedAt DateTime?
   completedAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

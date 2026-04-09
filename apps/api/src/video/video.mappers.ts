@@ -10,6 +10,7 @@ interface PersistedVideoRecord {
   readonly userId: string;
   readonly prompt: string;
   readonly provider: string;
+  readonly creditCost: number;
   readonly aspectRatio: string;
   readonly status: string;
   readonly title: string | null;
@@ -29,6 +30,7 @@ export function toVideoRecord(videoRecord: PersistedVideoRecord): VideoRecord {
     userId: videoRecord.userId,
     prompt: videoRecord.prompt,
     provider: toAppVideoProvider(videoRecord.provider),
+    creditCost: videoRecord.creditCost,
     aspectRatio: toVideoAspectRatio(videoRecord.aspectRatio),
     status: toAppVideoStatus(videoRecord.status),
     title: videoRecord.title,

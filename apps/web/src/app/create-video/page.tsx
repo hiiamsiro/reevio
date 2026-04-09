@@ -25,6 +25,7 @@ interface ProviderDefinition {
   readonly description: string;
   readonly status: 'available' | 'beta' | 'disabled';
   readonly priceTier: 'free' | 'pro' | 'premium';
+  readonly creditCost: number;
 }
 
 interface ApiEnvelope<T> {
@@ -38,6 +39,12 @@ interface CurrentUser {
   readonly email: string;
   readonly plan: string;
   readonly credits: number;
+}
+
+interface GenerateVideoResponse {
+  readonly video: VideoResponse;
+  readonly remainingCredits: number;
+  readonly creditsCharged: boolean;
 }
 
 const promptPresets = [
@@ -54,7 +61,8 @@ const styleModes = [
 ];
 
 const workflowNotes = [
-  'Credits only burn when a render starts.',
+  'Credits are reserved before processing starts.',
+  'Failed final renders refund credits automatically.',
   'Preview state refreshes every 2.5 seconds.',
   'Voiceover and subtitles appear after orchestration.',
 ];
@@ -75,6 +83,14 @@ export default function CreateVideoPage() {
   const deferredPrompt = useDeferredValue(prompt);
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
+  const hasEnoughCredits =
+    currentUser !== null && selectedProvider !== null
+      ? currentUser.credits >= selectedProvider.creditCost
+      : false;
+  const isLowCredit =
+    currentUser !== null && selectedProvider !== null
+      ? currentUser.credits < selectedProvider.creditCost * 2
+      : false;
 
   useEffect(() => {
     let isActive = true;
@@ -179,6 +195,17 @@ export default function CreateVideoPage() {
         throw new Error(payload.error ?? 'Failed to refresh video.');
       }
 
+      if (payload.data.status === 'failed' || payload.data.status === 'completed') {
+        const sessionResponse = await fetch('/api/auth/session', {
+          cache: 'no-store',
+        });
+        const sessionPayload = (await sessionResponse.json()) as ApiEnvelope<CurrentUser>;
+
+        if (sessionResponse.ok && sessionPayload.success && sessionPayload.data) {
+          setCurrentUser(sessionPayload.data);
+        }
+      }
+
       setVideo(payload.data);
     };
 
@@ -214,7 +241,7 @@ export default function CreateVideoPage() {
         }),
       });
 
-      const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
+      const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
 
       if (response.status === 401) {
         router.push('/login');
@@ -227,7 +254,17 @@ export default function CreateVideoPage() {
         return;
       }
 
-      setVideo(payload.data);
+      setVideo(payload.data.video);
+      setCurrentUser((previousUser) => {
+        if (!previousUser || !payload.data) {
+          return previousUser;
+        }
+
+        return {
+          ...previousUser,
+          credits: payload.data.remainingCredits,
+        };
+      });
     });
   };
 
@@ -303,12 +340,12 @@ export default function CreateVideoPage() {
               <strong>{selectedProvider?.label ?? 'Loading providers'}</strong>
             </div>
             <div className={styles.heroMetric}>
-              <span>Estimated credits</span>
-              <strong>{selectedProvider ? toCreditEstimate(selectedProvider.priceTier) : '--'}</strong>
+              <span>Remaining credits</span>
+              <strong>{currentUser ? currentUser.credits : '--'}</strong>
             </div>
             <div className={styles.heroMetric}>
-              <span>Aspect ratio</span>
-              <strong>{aspectRatio}</strong>
+              <span>Credit cost</span>
+              <strong>{selectedProvider ? `${selectedProvider.creditCost} credits` : '--'}</strong>
             </div>
             <div className={styles.heroMetric}>
               <span>Render status</span>
@@ -328,6 +365,9 @@ export default function CreateVideoPage() {
                 <span className={styles.metaBadge}>
                   {currentUser ? `${currentUser.credits} credits` : 'Loading credits'}
                 </span>
+                {selectedProvider ? (
+                  <span className={styles.metaBadge}>{selectedProvider.creditCost} credits / render</span>
+                ) : null}
                 <span className={styles.metaBadge}>Authenticated session</span>
               </div>
             </div>
@@ -373,7 +413,8 @@ export default function CreateVideoPage() {
                   >
                     {providers.map((providerDefinition) => (
                       <option key={providerDefinition.name} value={providerDefinition.name}>
-                        {providerDefinition.label} - {toPriceTierLabel(providerDefinition.priceTier)}
+                        {providerDefinition.label} - {toPriceTierLabel(providerDefinition.priceTier)} -{' '}
+                        {providerDefinition.creditCost} credits
                       </option>
                     ))}
                   </select>
@@ -412,16 +453,39 @@ export default function CreateVideoPage() {
                     <p className={styles.providerLabel}>Provider profile</p>
                     <h3>{selectedProvider.label}</h3>
                   </div>
-                  <p>{selectedProvider.description}</p>
+                  <p>
+                    {selectedProvider.description} This render costs {selectedProvider.creditCost}{' '}
+                    credits.
+                  </p>
+                </div>
+              ) : null}
+
+              {selectedProvider && currentUser ? (
+                <div className={styles.providerCard}>
+                  <div>
+                    <p className={styles.providerLabel}>Credit status</p>
+                    <h3>{hasEnoughCredits ? 'Ready to generate' : 'Insufficient credits'}</h3>
+                  </div>
+                  <p>
+                    {hasEnoughCredits
+                      ? isLowCredit
+                        ? `You have ${currentUser.credits} credits left, so you are close to your threshold for ${selectedProvider.label}.`
+                        : `You have ${currentUser.credits} credits available for this ${selectedProvider.creditCost}-credit render.`
+                      : `You need ${selectedProvider.creditCost} credits but only have ${currentUser.credits}. Failed final renders refund automatically.`}
+                  </p>
                 </div>
               ) : null}
 
               <button
                 className={styles.submit}
-                disabled={isPending || selectedProvider === null}
+                disabled={isPending || selectedProvider === null || !hasEnoughCredits}
                 type="submit"
               >
-                {isPending ? 'Generating preview...' : 'Generate video'}
+                {isPending
+                  ? 'Generating preview...'
+                  : !hasEnoughCredits && selectedProvider
+                    ? `Need ${selectedProvider.creditCost} credits`
+                    : 'Generate video'}
               </button>
             </form>
           </section>
@@ -443,6 +507,7 @@ export default function CreateVideoPage() {
                       {toPriceTierLabel(selectedProvider.priceTier)}
                     </span>
                   ) : null}
+                  {selectedProvider ? <span className={styles.pill}>{selectedProvider.creditCost} credits</span> : null}
                   <span className={styles.pill}>{aspectRatio}</span>
                   <span className={styles.pill}>{activeStatus}</span>
                 </div>
@@ -503,16 +568,4 @@ export default function CreateVideoPage() {
 
 function toPriceTierLabel(priceTier: ProviderDefinition['priceTier']): string {
   return priceTier.charAt(0).toUpperCase() + priceTier.slice(1);
-}
-
-function toCreditEstimate(priceTier: ProviderDefinition['priceTier']): string {
-  if (priceTier === 'free') {
-    return '8-12 credits';
-  }
-
-  if (priceTier === 'pro') {
-    return '18-24 credits';
-  }
-
-  return '28-40 credits';
 }

@@ -3,13 +3,15 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/auth.decorator';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { VideoNotFoundError } from './video.errors';
+import { InsufficientCreditsError, VideoNotFoundError } from './video.errors';
 import { generateVideoRequestSchema, videoIdParamSchema } from './video.schemas';
 import { VideoService } from './video.service';
 
@@ -28,18 +30,26 @@ export class VideoController {
       throw new BadRequestException(parsedBody.error.flatten());
     }
 
-    const video = await this.videoService.createVideo({
-      userId: user.id,
-      prompt: parsedBody.data.prompt,
-      provider: parsedBody.data.provider,
-      aspectRatio: parsedBody.data.aspectRatio,
-    });
+    try {
+      const video = await this.videoService.createVideo({
+        userId: user.id,
+        prompt: parsedBody.data.prompt,
+        provider: parsedBody.data.provider,
+        aspectRatio: parsedBody.data.aspectRatio,
+      });
 
-    return {
-      success: true,
-      data: video,
-      error: null,
-    };
+      return {
+        success: true,
+        data: video,
+        error: null,
+      };
+    } catch (error: unknown) {
+      if (error instanceof InsufficientCreditsError) {
+        throw new HttpException(error.message, HttpStatus.PAYMENT_REQUIRED);
+      }
+
+      throw error;
+    }
   }
 
   @Get('video/:id')

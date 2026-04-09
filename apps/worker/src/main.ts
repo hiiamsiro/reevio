@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   const worker = new Worker<VideoGenerationJobData>(
     VIDEO_GENERATION_QUEUE_NAME,
     async (job) => {
-      await processVideoGenerationJob(prismaClient, job.data);
+      await processVideoGenerationJob(prismaClient, job.data, job.attemptsMade, job.opts.attempts ?? 1);
     },
     {
       connection: {

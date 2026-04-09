@@ -17,3 +17,15 @@ export class VideoQueueError extends Error {
     this.code = 'VIDEO_QUEUE_ERROR';
   }
 }
+
+export class InsufficientCreditsError extends Error {
+  public readonly code: string;
+
+  public constructor(availableCredits: number, requiredCredits: number) {
+    super(
+      `Not enough credits to generate this video. Required ${requiredCredits}, available ${availableCredits}.`
+    );
+    this.name = 'InsufficientCreditsError';
+    this.code = 'INSUFFICIENT_CREDITS';
+  }
+}

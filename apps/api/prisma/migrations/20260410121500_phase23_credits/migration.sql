@@ -1,0 +1,4 @@
+ALTER TABLE "Video"
+ADD COLUMN "creditCost" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "creditChargedAt" TIMESTAMP(3),
+ADD COLUMN "creditRefundedAt" TIMESTAMP(3);

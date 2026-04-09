@@ -21,5 +21,6 @@ export interface ProviderDefinition {
   readonly description: string;
   readonly status: ProviderStatus;
   readonly priceTier: ProviderPriceTier;
+  readonly creditCost: number;
   readonly capabilities: ProviderCapabilities;
 }

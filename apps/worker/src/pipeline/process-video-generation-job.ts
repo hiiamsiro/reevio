@@ -40,7 +40,9 @@ interface PersistedJobWithVideo {
 
 export async function processVideoGenerationJob(
   prismaClient: PrismaClient,
-  jobData: VideoGenerationJobData
+  jobData: VideoGenerationJobData,
+  attemptsMade: number,
+  maxAttempts: number
 ): Promise<void> {
   const persistedJob = await prismaClient.job.findUnique({
     where: {
@@ -61,6 +63,8 @@ export async function processVideoGenerationJob(
     },
     data: {
       status: 'PROCESSING',
+      errorCode: null,
+      errorMessage: null,
     },
   });
 
@@ -71,6 +75,8 @@ export async function processVideoGenerationJob(
     data: {
       status: 'PROCESSING',
       step: 'PARSE_PROMPT',
+      errorCode: null,
+      errorMessage: null,
       startedAt: new Date(),
       attempts: {
         increment: 1,
@@ -121,28 +127,9 @@ export async function processVideoGenerationJob(
     );
   } catch (error: unknown) {
     const errorMessage = getErrorMessage(error);
+    const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
 
-    await prismaClient.job.update({
-      where: {
-        id: persistedJob.id,
-      },
-      data: {
-        status: 'FAILED',
-        errorCode: 'PIPELINE_FAILED',
-        errorMessage,
-      },
-    });
-
-    await prismaClient.video.update({
-      where: {
-        id: persistedJob.videoId,
-      },
-      data: {
-        status: 'FAILED',
-        errorCode: 'PIPELINE_FAILED',
-        errorMessage,
-      },
-    });
+    await handlePipelineFailure(prismaClient, persistedJob, errorMessage, isFinalAttempt);
 
     throw error;
   }
@@ -265,6 +252,91 @@ async function updateJobStep(
     data: {
       step,
     },
+  });
+}
+
+async function handlePipelineFailure(
+  prismaClient: PrismaClient,
+  persistedJob: PersistedJobWithVideo,
+  errorMessage: string,
+  isFinalAttempt: boolean
+): Promise<void> {
+  if (!isFinalAttempt) {
+    await prismaClient.job.update({
+      where: {
+        id: persistedJob.id,
+      },
+      data: {
+        status: 'QUEUED',
+        errorCode: 'PIPELINE_RETRYING',
+        errorMessage,
+      },
+    });
+
+    await prismaClient.video.update({
+      where: {
+        id: persistedJob.videoId,
+      },
+      data: {
+        status: 'QUEUED',
+        errorCode: 'PIPELINE_RETRYING',
+        errorMessage,
+      },
+    });
+
+    return;
+  }
+
+  await prismaClient.$transaction(async (transactionClient) => {
+    const videoRecord = await transactionClient.video.findUnique({
+      where: {
+        id: persistedJob.videoId,
+      },
+      select: {
+        creditCost: true,
+        creditRefundedAt: true,
+      },
+    });
+
+    if (!videoRecord) {
+      throw new Error(`Video "${persistedJob.videoId}" was not found while refunding credits.`);
+    }
+
+    if (!videoRecord.creditRefundedAt && videoRecord.creditCost > 0) {
+      await transactionClient.user.update({
+        where: {
+          id: persistedJob.userId,
+        },
+        data: {
+          credits: {
+            increment: videoRecord.creditCost,
+          },
+        },
+      });
+    }
+
+    await transactionClient.job.update({
+      where: {
+        id: persistedJob.id,
+      },
+      data: {
+        status: 'FAILED',
+        errorCode: 'PIPELINE_FAILED',
+        errorMessage,
+      },
+    });
+
+    await transactionClient.video.update({
+      where: {
+        id: persistedJob.videoId,
+      },
+      data: {
+        status: 'FAILED',
+        errorCode: 'PIPELINE_FAILED',
+        errorMessage,
+        creditRefundedAt: videoRecord.creditRefundedAt ?? new Date(),
+      },
+    });
   });
 }
 
