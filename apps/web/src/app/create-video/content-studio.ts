@@ -36,6 +36,18 @@ export interface ExportFormatDefinition {
   readonly ctaLabel: string;
 }
 
+export interface PostingPreparationInput {
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}
+
+export interface PostingPreparation {
+  readonly title: string;
+  readonly caption: string;
+  readonly hashtags: string;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -66,6 +78,23 @@ export function parseBulkProductList(input: string): string[] {
     .map((line) => line.split(',')[0]?.trim() ?? '')
     .filter((line) => line.toLowerCase() !== 'product')
     .filter((line) => line.length > 0);
+}
+
+export function createPostingPreparation(input: PostingPreparationInput): PostingPreparation {
+  const headline = getPreviewHeadline({
+    prompt: input.prompt,
+    selectedHookText: input.selectedHookText,
+    ctaText: input.ctaText,
+  });
+  const summary = getPreviewBody(input.prompt);
+  const ctaLine = input.ctaText?.trim() || 'Watch the full cut and grab the offer.';
+  const hashtags = createHashtagList(input.prompt);
+
+  return {
+    title: headline.length > 68 ? `${headline.slice(0, 65)}...` : headline,
+    caption: `${headline}\n\n${summary}\n\n${ctaLine}`,
+    hashtags: hashtags.join(' '),
+  };
 }
 
 const HOOK_COUNT = 10;
@@ -285,4 +314,17 @@ function getPreviewBody(prompt: string): string {
   }
 
   return normalizedPrompt.length > 96 ? `${normalizedPrompt.slice(0, 93)}...` : normalizedPrompt;
+}
+
+function createHashtagList(prompt: string): string[] {
+  const productFocus = getProductFocus(normalizeProductDescription(prompt));
+  const compactProductFocus = productFocus.replace(/\s+/g, '');
+
+  return [
+    '#reevio',
+    '#videomarketing',
+    `#${compactProductFocus}`,
+    '#ugcads',
+    '#contentengine',
+  ];
 }

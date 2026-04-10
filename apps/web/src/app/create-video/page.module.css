@@ -500,10 +500,31 @@
   flex-wrap: wrap;
 }
 
+.copyBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .fileInput {
   width: 100%;
   min-height: 44px;
   color: var(--color-text-secondary);
+}
+
+.textInput {
+  width: 100%;
+  min-height: 54px;
+  padding: 0.95rem 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--color-border-soft);
+  background: rgba(5, 9, 20, 0.56);
+  color: var(--color-text-primary);
+  transition:
+    border-color var(--transition-soft),
+    box-shadow var(--transition-soft),
+    transform var(--transition-soft);
 }
 
 .exportPreviewFrame {
@@ -618,6 +639,7 @@
 }
 
 .textarea:focus,
+.textInput:focus,
 .select:focus {
   outline: none;
   border-color: rgba(116, 230, 255, 0.5);
@@ -760,6 +782,7 @@
 .segmentButton:focus-visible,
 .exportOption:focus-visible,
 .textarea:focus-visible,
+.textInput:focus-visible,
 .select:focus-visible {
   outline: 2px solid rgba(116, 230, 255, 0.72);
   outline-offset: 3px;

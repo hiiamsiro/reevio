@@ -9,12 +9,14 @@ import {
   createExportFormats,
   createCtaText,
   createHookOptions,
+  createPostingPreparation,
   parseBulkProductList,
   toCtaTypeLabel,
   type CtaType,
   type ExportFormatDefinition,
   type ExportFormatId,
   type HookOption,
+  type PostingPreparation,
 } from './content-studio';
 import styles from './page.module.css';
 
@@ -131,6 +133,18 @@ export default function CreateVideoPage() {
   const [bulkJobs, setBulkJobs] = useState<BulkJobItem[]>([]);
   const [bulkErrorMessage, setBulkErrorMessage] = useState<string | null>(null);
   const [isBulkGenerating, setIsBulkGenerating] = useState(false);
+  const [postingPreparation, setPostingPreparation] = useState<PostingPreparation>(() =>
+    createPostingPreparation({
+      prompt: INITIAL_PROMPT,
+      selectedHookText: null,
+      ctaText: createCtaText({
+        productDescription: INITIAL_HOOK_SOURCE,
+        seed: 0,
+        type: 'urgency',
+      }),
+    })
+  );
+  const [postingNotice, setPostingNotice] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -715,6 +729,43 @@ export default function CreateVideoPage() {
     }
   };
 
+  const handleRegeneratePostingPreparation = (): void => {
+    setPostingPreparation(
+      createPostingPreparation({
+        prompt,
+        selectedHookText: selectedHook?.text ?? null,
+        ctaText,
+      })
+    );
+    setPostingNotice(null);
+  };
+
+  const handleUpdatePostingPreparation = (
+    field: keyof PostingPreparation,
+    value: string
+  ): void => {
+    setPostingPreparation((previousPostingPreparation) => ({
+      ...previousPostingPreparation,
+      [field]: value,
+    }));
+  };
+
+  const handleCopyPostingField = (label: string, value: string): void => {
+    if (!navigator.clipboard) {
+      setPostingNotice('Clipboard is unavailable in this browser. Copy manually.');
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(value)
+      .then(() => {
+        setPostingNotice(`${label} copied.`);
+      })
+      .catch(() => {
+        setPostingNotice(`Failed to copy ${label.toLowerCase()}.`);
+      });
+  };
+
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
 
   return (
@@ -1269,6 +1320,95 @@ export default function CreateVideoPage() {
                   Download {selectedExportFormat.label}
                 </button>
               </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="posting-prep-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 29</p>
+                  <h3 className={styles.toolTitle} id="posting-prep-title">
+                    Posting preparation
+                  </h3>
+                </div>
+                <button
+                  className={styles.secondaryButton}
+                  onClick={handleRegeneratePostingPreparation}
+                  type="button"
+                >
+                  Refresh content
+                </button>
+              </div>
+
+              <div className={styles.progressCard}>
+                <div className={styles.copyBar}>
+                  <label className={styles.label} htmlFor="postingTitle">
+                    Title
+                  </label>
+                  <button
+                    className={styles.ghostButton}
+                    onClick={() => handleCopyPostingField('Title', postingPreparation.title)}
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <input
+                  id="postingTitle"
+                  className={styles.textInput}
+                  value={postingPreparation.title}
+                  onChange={(event) =>
+                    handleUpdatePostingPreparation('title', event.target.value)
+                  }
+                />
+              </div>
+
+              <div className={styles.progressCard}>
+                <div className={styles.copyBar}>
+                  <label className={styles.label} htmlFor="postingCaption">
+                    Caption
+                  </label>
+                  <button
+                    className={styles.ghostButton}
+                    onClick={() => handleCopyPostingField('Caption', postingPreparation.caption)}
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <textarea
+                  id="postingCaption"
+                  className={styles.textarea}
+                  value={postingPreparation.caption}
+                  onChange={(event) =>
+                    handleUpdatePostingPreparation('caption', event.target.value)
+                  }
+                />
+              </div>
+
+              <div className={styles.progressCard}>
+                <div className={styles.copyBar}>
+                  <label className={styles.label} htmlFor="postingHashtags">
+                    Hashtags
+                  </label>
+                  <button
+                    className={styles.ghostButton}
+                    onClick={() => handleCopyPostingField('Hashtags', postingPreparation.hashtags)}
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <textarea
+                  id="postingHashtags"
+                  className={styles.textarea}
+                  value={postingPreparation.hashtags}
+                  onChange={(event) =>
+                    handleUpdatePostingPreparation('hashtags', event.target.value)
+                  }
+                />
+              </div>
+
+              {postingNotice ? <p className={styles.toolHint}>{postingNotice}</p> : null}
             </section>
 
             <div className={styles.noteGrid}>
