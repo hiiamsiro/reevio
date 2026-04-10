@@ -3,10 +3,18 @@ export interface HookGeneratorInput {
   readonly seed: number;
 }
 
+export type CtaType = 'urgency' | 'scarcity' | 'discount';
+
 export interface HookOption {
   readonly id: string;
   readonly text: string;
   readonly angle: string;
+}
+
+export interface CtaGeneratorInput {
+  readonly productDescription: string;
+  readonly seed: number;
+  readonly type: CtaType;
 }
 
 const HOOK_COUNT = 10;
@@ -58,18 +66,62 @@ export function createHookOptions(input: HookGeneratorInput): HookOption[] {
   });
 }
 
-export function buildPromptWithHook(prompt: string, selectedHookText: string | null): string {
-  const normalizedPrompt = prompt.trim();
+export function createCtaText(input: CtaGeneratorInput): string {
+  const productFocus = getProductFocus(normalizeProductDescription(input.productDescription));
+  const typeTemplates = getCtaTemplates(input.type);
+  const selectedTemplate = typeTemplates[input.seed % typeTemplates.length];
 
-  if (!selectedHookText) {
+  return capitalizeHookText(selectedTemplate.replace('{product}', productFocus));
+}
+
+export function buildPromptWithCreativeDirectives(input: {
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}): string {
+  const normalizedPrompt = input.prompt.trim();
+  const directives = [
+    input.selectedHookText ? `${FALLBACK_HOOK_PREFIX}: "${input.selectedHookText}"` : null,
+    input.ctaText ? `Close with CTA at the end of the video: "${input.ctaText.trim()}"` : null,
+  ].filter((directive): directive is string => directive !== null && directive.trim().length > 0);
+
+  if (directives.length === 0) {
     return normalizedPrompt;
   }
 
   if (normalizedPrompt.length === 0) {
-    return `${FALLBACK_HOOK_PREFIX}: "${selectedHookText}"`;
+    return directives.join('\n');
   }
 
-  return `${FALLBACK_HOOK_PREFIX}: "${selectedHookText}"\n${normalizedPrompt}`;
+  return `${directives.join('\n')}\n${normalizedPrompt}`;
+}
+
+export function toCtaTypeLabel(type: CtaType): string {
+  return capitalizeHookText(type);
+}
+
+function getCtaTemplates(type: CtaType): string[] {
+  if (type === 'urgency') {
+    return [
+      'Shop {product} before tonight slips away.',
+      'Tap now before {product} sells through this push.',
+      'Move fast if {product} is on your list today.',
+    ];
+  }
+
+  if (type === 'scarcity') {
+    return [
+      'Claim {product} before the last batch disappears.',
+      'Only a few {product} spots are left this round.',
+      'Catch {product} before everyone else clears it out.',
+    ];
+  }
+
+  return [
+    'Unlock 15% off {product} before checkout closes.',
+    'Grab the {product} deal while the discount is still live.',
+    'Use the offer now and save on {product} today.',
+  ];
 }
 
 function normalizeProductDescription(productDescription: string): string {

@@ -359,7 +359,8 @@
 .toolHeader,
 .toolActions,
 .hookCardTop,
-.hookActions {
+.hookActions,
+.segmentGroup {
   display: flex;
   align-items: center;
 }
@@ -397,9 +398,34 @@
 .secondaryButton:hover,
 .secondaryButton:focus-visible,
 .ghostButton:hover,
+.segmentButton:hover,
+.segmentButton:focus-visible,
 .ghostButton:focus-visible {
   transform: translateY(-1px);
   border-color: rgba(116, 230, 255, 0.48);
+}
+
+.segmentGroup {
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.segmentButton {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    transform var(--transition-soft),
+    border-color var(--transition-soft),
+    background-color var(--transition-soft);
+}
+
+.segmentButtonActive {
+  border-color: rgba(255, 140, 107, 0.46);
+  background: rgba(255, 140, 107, 0.16);
 }
 
 .hookGrid {
@@ -617,6 +643,7 @@
 .presetCard:focus-visible,
 .secondaryButton:focus-visible,
 .ghostButton:focus-visible,
+.segmentButton:focus-visible,
 .textarea:focus-visible,
 .select:focus-visible {
   outline: 2px solid rgba(116, 230, 255, 0.72);

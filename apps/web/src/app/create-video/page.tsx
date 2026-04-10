@@ -3,7 +3,14 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
-import { buildPromptWithHook, createHookOptions, type HookOption } from './content-studio';
+import {
+  buildPromptWithCreativeDirectives,
+  createCtaText,
+  createHookOptions,
+  toCtaTypeLabel,
+  type CtaType,
+  type HookOption,
+} from './content-studio';
 import styles from './page.module.css';
 
 interface VideoResponse {
@@ -71,6 +78,7 @@ const workflowNotes = [
 const INITIAL_HOOK_SOURCE = 'Compact espresso machine for busy home baristas';
 const INITIAL_PROMPT =
   'Create an affiliate video for a compact espresso machine with strong hook and CTA.';
+const CTA_TYPES: CtaType[] = ['urgency', 'scarcity', 'discount'];
 
 export default function CreateVideoPage() {
   const router = useRouter();
@@ -85,6 +93,15 @@ export default function CreateVideoPage() {
   const [selectedHookId, setSelectedHookId] = useState<string | null>(null);
   const [copiedHookId, setCopiedHookId] = useState<string | null>(null);
   const [hookErrorMessage, setHookErrorMessage] = useState<string | null>(null);
+  const [ctaType, setCtaType] = useState<CtaType>('urgency');
+  const [ctaSeed, setCtaSeed] = useState(0);
+  const [ctaText, setCtaText] = useState(() =>
+    createCtaText({
+      productDescription: INITIAL_HOOK_SOURCE,
+      seed: 0,
+      type: 'urgency',
+    })
+  );
   const [prompt, setPrompt] = useState(INITIAL_PROMPT);
   const [provider, setProvider] = useState('remotion');
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
@@ -96,9 +113,18 @@ export default function CreateVideoPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const deferredPrompt = useDeferredValue(prompt);
   const selectedHook = hookOptions.find((hookOption) => hookOption.id === selectedHookId) ?? null;
-  const composedPrompt = buildPromptWithHook(prompt, selectedHook?.text ?? null);
+  const composedPrompt = buildPromptWithCreativeDirectives({
+    prompt,
+    selectedHookText: selectedHook?.text ?? null,
+    ctaText,
+  });
   const previewPrompt =
-    video?.prompt ?? buildPromptWithHook(deferredPrompt, selectedHook?.text ?? null);
+    video?.prompt ??
+    buildPromptWithCreativeDirectives({
+      prompt: deferredPrompt,
+      selectedHookText: selectedHook?.text ?? null,
+      ctaText,
+    });
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -344,6 +370,31 @@ export default function CreateVideoPage() {
       });
   };
 
+  const handleRegenerateCta = (): void => {
+    const nextSeed = ctaSeed + 1;
+
+    setCtaSeed(nextSeed);
+    setCtaText(
+      createCtaText({
+        productDescription: hookSource,
+        seed: nextSeed,
+        type: ctaType,
+      })
+    );
+  };
+
+  const handleSelectCtaType = (type: CtaType): void => {
+    setCtaType(type);
+    setCtaSeed(0);
+    setCtaText(
+      createCtaText({
+        productDescription: hookSource,
+        seed: 0,
+        type,
+      })
+    );
+  };
+
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
 
   return (
@@ -550,6 +601,59 @@ export default function CreateVideoPage() {
                   onChange={(event) => setPrompt(event.target.value)}
                 />
               </div>
+
+              <section className={styles.toolPanel} aria-labelledby="cta-engine-title">
+                <div className={styles.toolHeader}>
+                  <div>
+                    <p className={styles.sectionEyebrow}>Phase 26</p>
+                    <h3 className={styles.toolTitle} id="cta-engine-title">
+                      CTA engine
+                    </h3>
+                  </div>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={handleRegenerateCta}
+                    type="button"
+                  >
+                    Regenerate CTA
+                  </button>
+                </div>
+
+                <div className={styles.segmentGroup} aria-label="CTA type">
+                  {CTA_TYPES.map((type) => {
+                    const isActive = type === ctaType;
+
+                    return (
+                      <button
+                        aria-pressed={isActive}
+                        className={`${styles.segmentButton} ${isActive ? styles.segmentButtonActive : ''}`}
+                        key={type}
+                        onClick={() => handleSelectCtaType(type)}
+                        type="button"
+                      >
+                        {toCtaTypeLabel(type)}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className={styles.selectedHookCard}>
+                  <span className={styles.selectedHookLabel}>Placement</span>
+                  <strong>End of video</strong>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="ctaText">
+                    CTA copy
+                  </label>
+                  <textarea
+                    id="ctaText"
+                    className={styles.textarea}
+                    value={ctaText}
+                    onChange={(event) => setCtaText(event.target.value)}
+                  />
+                </div>
+              </section>
 
               <div className={styles.fieldRow}>
                 <div className={styles.fieldGroup}>
