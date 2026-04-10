@@ -183,6 +183,9 @@ export default function CreateVideoPage() {
   const [referralCode] = useState('REEVIO-START');
   const [referralCredits] = useState(30);
   const [autoMachineNotice, setAutoMachineNotice] = useState<string | null>(null);
+  const [views, setViews] = useState('12000');
+  const [likes, setLikes] = useState('840');
+  const [watchTime, setWatchTime] = useState('18');
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -233,6 +236,11 @@ export default function CreateVideoPage() {
     ).length,
     latestError: bulkJobs.find((bulkJob) => bulkJob.errorMessage)?.errorMessage ?? 'No recent failures.',
   };
+  const performanceInsight = createPerformanceInsight({
+    views,
+    likes,
+    watchTime,
+  });
   const hasEnoughCredits =
     currentUser !== null && selectedProvider !== null
       ? currentUser.credits >= selectedProvider.creditCost
@@ -1998,6 +2006,60 @@ export default function CreateVideoPage() {
               {autoMachineNotice ? <p className={styles.toolHint}>{autoMachineNotice}</p> : null}
             </section>
 
+            <section className={styles.toolPanel} aria-labelledby="performance-ai-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 42</p>
+                  <h3 className={styles.toolTitle} id="performance-ai-title">
+                    Performance AI
+                  </h3>
+                </div>
+                <span className={styles.scoreBadge}>{performanceInsight.health}</span>
+              </div>
+
+              <div className={styles.fieldRow}>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="views">
+                    Views
+                  </label>
+                  <input
+                    id="views"
+                    className={styles.textInput}
+                    onChange={(event) => setViews(event.target.value)}
+                    value={views}
+                  />
+                </div>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="likes">
+                    Likes
+                  </label>
+                  <input
+                    id="likes"
+                    className={styles.textInput}
+                    onChange={(event) => setLikes(event.target.value)}
+                    value={likes}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <label className={styles.label} htmlFor="watchTime">
+                  Average watch time (seconds)
+                </label>
+                <input
+                  id="watchTime"
+                  className={styles.textInput}
+                  onChange={(event) => setWatchTime(event.target.value)}
+                  value={watchTime}
+                />
+              </div>
+
+              <div className={styles.progressCard}>
+                <strong>Suggestion</strong>
+                <p className={styles.previewPrompt}>{performanceInsight.suggestion}</p>
+              </div>
+            </section>
+
             <div className={styles.noteGrid}>
               {workflowNotes.map((note) => (
                 <div className={styles.noteCard} key={note}>
@@ -2159,4 +2221,37 @@ async function submitVideoRequest(input: {
       credits: payload.data.remainingCredits,
     };
   });
+}
+
+function createPerformanceInsight(input: {
+  readonly views: string;
+  readonly likes: string;
+  readonly watchTime: string;
+}): {
+  readonly health: string;
+  readonly suggestion: string;
+} {
+  const viewCount = Number(input.views) || 0;
+  const likeCount = Number(input.likes) || 0;
+  const averageWatchTime = Number(input.watchTime) || 0;
+  const engagementRate = viewCount > 0 ? (likeCount / viewCount) * 100 : 0;
+
+  if (engagementRate >= 6 && averageWatchTime >= 15) {
+    return {
+      health: 'Strong',
+      suggestion: 'Keep the hook structure and test a stronger CTA to squeeze more conversion from healthy retention.',
+    };
+  }
+
+  if (engagementRate >= 3) {
+    return {
+      health: 'Stable',
+      suggestion: 'Tighten the opening three seconds and push more emotional contrast before the offer lands.',
+    };
+  }
+
+  return {
+    health: 'Needs work',
+    suggestion: 'Rebuild the hook, shorten the setup, and add faster payoff so watch time lifts earlier in the cut.',
+  };
 }
