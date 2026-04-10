@@ -528,6 +528,45 @@
   gap: 0.85rem;
 }
 
+.watermarkPreview {
+  position: relative;
+  min-height: 14rem;
+  border-radius: 1.4rem;
+  border: 1px solid var(--color-border-soft);
+  background:
+    radial-gradient(circle at 18% 20%, rgba(116, 230, 255, 0.28), transparent 24%),
+    linear-gradient(160deg, rgba(8, 12, 29, 0.98), rgba(31, 24, 67, 0.94));
+}
+
+.watermarkBadge {
+  position: absolute;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 9, 20, 0.68);
+  color: var(--color-text-primary);
+}
+
+.watermarkTopLeft {
+  top: 1rem;
+  left: 1rem;
+}
+
+.watermarkTopRight {
+  top: 1rem;
+  right: 1rem;
+}
+
+.watermarkBottomLeft {
+  bottom: 1rem;
+  left: 1rem;
+}
+
+.watermarkBottomRight {
+  right: 1rem;
+  bottom: 1rem;
+}
+
 .fileInput {
   width: 100%;
   min-height: 44px;

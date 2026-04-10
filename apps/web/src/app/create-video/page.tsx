@@ -177,6 +177,9 @@ export default function CreateVideoPage() {
     },
   ]);
   const [teamNotice, setTeamNotice] = useState<string | null>(null);
+  const [watermarkType, setWatermarkType] = useState<'text' | 'logo'>('text');
+  const [watermarkText, setWatermarkText] = useState('Reevio');
+  const [watermarkPosition, setWatermarkPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -1743,6 +1746,70 @@ export default function CreateVideoPage() {
               {teamNotice ? <p className={styles.toolHint}>{teamNotice}</p> : null}
             </section>
 
+            <section className={styles.toolPanel} aria-labelledby="watermark-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 36</p>
+                  <h3 className={styles.toolTitle} id="watermark-title">
+                    Watermark
+                  </h3>
+                </div>
+              </div>
+
+              <div className={styles.segmentGroup}>
+                <button
+                  aria-pressed={watermarkType === 'text'}
+                  className={`${styles.segmentButton} ${watermarkType === 'text' ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setWatermarkType('text')}
+                  type="button"
+                >
+                  Text
+                </button>
+                <button
+                  aria-pressed={watermarkType === 'logo'}
+                  className={`${styles.segmentButton} ${watermarkType === 'logo' ? styles.segmentButtonActive : ''}`}
+                  onClick={() => setWatermarkType('logo')}
+                  type="button"
+                >
+                  Logo
+                </button>
+              </div>
+
+              <div className={styles.fieldRow}>
+                <input
+                  className={styles.textInput}
+                  onChange={(event) => setWatermarkText(event.target.value)}
+                  value={watermarkText}
+                />
+                <select
+                  className={styles.select}
+                  onChange={(event) =>
+                    setWatermarkPosition(
+                      event.target.value as
+                        | 'top-left'
+                        | 'top-right'
+                        | 'bottom-left'
+                        | 'bottom-right'
+                    )
+                  }
+                  value={watermarkPosition}
+                >
+                  <option value="top-left">Top left</option>
+                  <option value="top-right">Top right</option>
+                  <option value="bottom-left">Bottom left</option>
+                  <option value="bottom-right">Bottom right</option>
+                </select>
+              </div>
+
+              <div className={styles.watermarkPreview}>
+                <span
+                  className={`${styles.watermarkBadge} ${getWatermarkPositionClassName(watermarkPosition, styles)}`}
+                >
+                  {watermarkType === 'logo' ? 'Logo mark' : watermarkText}
+                </span>
+              </div>
+            </section>
+
             <div className={styles.noteGrid}>
               {workflowNotes.map((note) => (
                 <div className={styles.noteCard} key={note}>
@@ -1807,6 +1874,25 @@ function getExportFrameClassName(
   }
 
   return classNames.exportPreviewTall;
+}
+
+function getWatermarkPositionClassName(
+  watermarkPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right',
+  classNames: Record<string, string>
+): string {
+  if (watermarkPosition === 'top-left') {
+    return classNames.watermarkTopLeft;
+  }
+
+  if (watermarkPosition === 'top-right') {
+    return classNames.watermarkTopRight;
+  }
+
+  if (watermarkPosition === 'bottom-left') {
+    return classNames.watermarkBottomLeft;
+  }
+
+  return classNames.watermarkBottomRight;
 }
 
 function toBulkJobStatus(videoStatus: string): BulkJobStatus {
