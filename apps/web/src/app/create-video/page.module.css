@@ -396,6 +396,11 @@
   background: rgba(116, 230, 255, 0.08);
 }
 
+.secondaryButton:disabled {
+  opacity: 0.7;
+  transform: none;
+}
+
 .secondaryButton:hover,
 .secondaryButton:focus-visible,
 .ghostButton:hover,
@@ -473,6 +478,32 @@
 .exportPreviewShell {
   display: grid;
   gap: 0.9rem;
+}
+
+.progressList {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.progressCard {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--color-border-soft);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.progressActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fileInput {
+  width: 100%;
+  min-height: 44px;
+  color: var(--color-text-secondary);
 }
 
 .exportPreviewFrame {

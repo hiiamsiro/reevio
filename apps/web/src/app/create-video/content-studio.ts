@@ -36,6 +36,38 @@ export interface ExportFormatDefinition {
   readonly ctaLabel: string;
 }
 
+export function createBulkVideoPrompt(productDescription: string): string {
+  const normalizedDescription = normalizeProductDescription(productDescription);
+
+  if (normalizedDescription.length === 0) {
+    return '';
+  }
+
+  const hookText = createHookOptions({
+    productDescription: normalizedDescription,
+    seed: 0,
+  })[0]?.text ?? null;
+  const ctaText = createCtaText({
+    productDescription: normalizedDescription,
+    seed: 0,
+    type: 'urgency',
+  });
+
+  return buildPromptWithCreativeDirectives({
+    prompt: `Create an affiliate video for ${normalizedDescription}.`,
+    selectedHookText: hookText,
+    ctaText,
+  });
+}
+
+export function parseBulkProductList(input: string): string[] {
+  return input
+    .split(/\r?\n/)
+    .map((line) => line.split(',')[0]?.trim() ?? '')
+    .filter((line) => line.toLowerCase() !== 'product')
+    .filter((line) => line.length > 0);
+}
+
 const HOOK_COUNT = 10;
 const FALLBACK_PRODUCT_FOCUS = 'this product';
 const FALLBACK_HOOK_PREFIX = 'Lead with hook';

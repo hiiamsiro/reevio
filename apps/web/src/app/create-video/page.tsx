@@ -2,12 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useDeferredValue, useEffect, useState, useTransition } from 'react';
+import { type Dispatch, type SetStateAction, useDeferredValue, useEffect, useState, useTransition } from 'react';
 import {
   buildPromptWithCreativeDirectives,
+  createBulkVideoPrompt,
   createExportFormats,
   createCtaText,
   createHookOptions,
+  parseBulkProductList,
   toCtaTypeLabel,
   type CtaType,
   type ExportFormatDefinition,
@@ -57,6 +59,17 @@ interface GenerateVideoResponse {
   readonly video: VideoResponse;
   readonly remainingCredits: number;
   readonly creditsCharged: boolean;
+}
+
+type BulkJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+interface BulkJobItem {
+  readonly id: string;
+  readonly productDescription: string;
+  readonly videoId: string | null;
+  readonly status: BulkJobStatus;
+  readonly outputUrl: string | null;
+  readonly errorMessage: string | null;
 }
 
 const promptPresets = [
@@ -112,6 +125,12 @@ export default function CreateVideoPage() {
   const [video, setVideo] = useState<VideoResponse | null>(null);
   const [selectedExportFormatId, setSelectedExportFormatId] =
     useState<ExportFormatId>('tiktok-9x16');
+  const [bulkInput, setBulkInput] = useState(
+    'Compact espresso machine\nVitamin C serum kit\nAI subtitle generator'
+  );
+  const [bulkJobs, setBulkJobs] = useState<BulkJobItem[]>([]);
+  const [bulkErrorMessage, setBulkErrorMessage] = useState<string | null>(null);
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -280,6 +299,76 @@ export default function CreateVideoPage() {
     };
   }, [video?.id, video?.status]);
 
+  useEffect(() => {
+    const pendingBulkJobs = bulkJobs.filter(
+      (bulkJob) => bulkJob.videoId && bulkJob.status !== 'completed' && bulkJob.status !== 'failed'
+    );
+
+    if (pendingBulkJobs.length === 0) {
+      return;
+    }
+
+    const refreshBulkJobs = async (): Promise<void> => {
+      const refreshedJobs = await Promise.all(
+        pendingBulkJobs.map(async (bulkJob) => {
+          const response = await fetch(`/api/video/${bulkJob.videoId}`, {
+            cache: 'no-store',
+          });
+          const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
+
+          if (response.status === 401) {
+            router.push('/login');
+            router.refresh();
+            throw new Error('Authentication is required.');
+          }
+
+          if (!response.ok || !payload.success || !payload.data) {
+            throw new Error(payload.error ?? `Failed to refresh bulk job "${bulkJob.id}".`);
+          }
+
+          return {
+            id: bulkJob.id,
+            status: toBulkJobStatus(payload.data.status),
+            outputUrl: payload.data.outputUrl,
+            errorMessage: payload.data.errorMessage,
+          };
+        })
+      );
+
+      setBulkJobs((previousJobs) =>
+        previousJobs.map((bulkJob) => {
+          const refreshedJob = refreshedJobs.find((item) => item.id === bulkJob.id);
+
+          if (!refreshedJob) {
+            return bulkJob;
+          }
+
+          return {
+            ...bulkJob,
+            status: refreshedJob.status,
+            outputUrl: refreshedJob.outputUrl,
+            errorMessage: refreshedJob.errorMessage,
+          };
+        })
+      );
+    };
+
+    const intervalId = window.setInterval(() => {
+      void refreshBulkJobs().catch((error: unknown) => {
+        if (error instanceof Error) {
+          setBulkErrorMessage(error.message);
+          return;
+        }
+
+        setBulkErrorMessage('Failed to refresh bulk jobs.');
+      });
+    }, 2500);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [bulkJobs]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
@@ -437,6 +526,193 @@ export default function CreateVideoPage() {
       content: fileContent,
       fileName: 'multi-format-export-brief.txt',
     });
+  };
+
+  const handleBulkFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
+    const uploadedFile = event.target.files?.[0];
+
+    if (!uploadedFile) {
+      return;
+    }
+
+    try {
+      const fileContent = await uploadedFile.text();
+
+      setBulkInput(fileContent);
+      setBulkErrorMessage(null);
+    } catch {
+      setBulkErrorMessage('Failed to read the uploaded list.');
+    }
+  };
+
+  const handleGenerateBulk = async (): Promise<void> => {
+    if (isBulkGenerating) {
+      return;
+    }
+
+    const productDescriptions = parseBulkProductList(bulkInput);
+
+    if (productDescriptions.length === 0) {
+      setBulkErrorMessage('Add at least one product description before bulk generation.');
+      return;
+    }
+
+    const initialBulkJobs = productDescriptions.map((productDescription, index) => ({
+      id: `bulk-${Date.now()}-${index + 1}`,
+      productDescription,
+      videoId: null,
+      status: 'processing' as const,
+      outputUrl: null,
+      errorMessage: null,
+    }));
+
+    setBulkJobs(initialBulkJobs);
+    setBulkErrorMessage(null);
+    setIsBulkGenerating(true);
+
+    const settledJobs = await Promise.allSettled(
+      initialBulkJobs.map(async (bulkJob) => {
+        const response = await fetch('/api/video', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: createBulkVideoPrompt(bulkJob.productDescription),
+            provider,
+            aspectRatio,
+          }),
+        });
+        const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
+
+        if (response.status === 401) {
+          router.push('/login');
+          router.refresh();
+          throw new Error('Authentication is required.');
+        }
+
+        if (!response.ok || !payload.success || !payload.data) {
+          throw new Error(payload.error ?? `Failed to queue "${bulkJob.productDescription}".`);
+        }
+
+        return {
+          id: bulkJob.id,
+          videoId: payload.data.video.id,
+          status: toBulkJobStatus(payload.data.video.status),
+          outputUrl: payload.data.video.outputUrl,
+          errorMessage: payload.data.video.errorMessage,
+        };
+      })
+    );
+
+    setBulkJobs((previousJobs) =>
+      previousJobs.map((bulkJob, index) => {
+        const settledJob = settledJobs[index];
+
+        if (!settledJob || settledJob.status === 'rejected') {
+          return {
+            ...bulkJob,
+            status: 'failed',
+            errorMessage:
+              settledJob?.reason instanceof Error
+                ? settledJob.reason.message
+                : 'Failed to queue the bulk generation request.',
+          };
+        }
+
+        return {
+          ...bulkJob,
+          videoId: settledJob.value.videoId,
+          status: settledJob.value.status,
+          outputUrl: settledJob.value.outputUrl,
+          errorMessage: settledJob.value.errorMessage,
+        };
+      })
+    );
+
+    setIsBulkGenerating(false);
+    void refreshCurrentUser(setCurrentUser).catch(() => {
+      setBulkErrorMessage('Bulk generation completed, but credits could not be refreshed.');
+    });
+  };
+
+  const handleRetryBulkJob = async (bulkJobId: string): Promise<void> => {
+    const bulkJob = bulkJobs.find((item) => item.id === bulkJobId);
+
+    if (!bulkJob) {
+      return;
+    }
+
+    setBulkJobs((previousJobs) =>
+      previousJobs.map((item) =>
+        item.id === bulkJobId
+          ? {
+              ...item,
+              status: 'processing',
+              errorMessage: null,
+            }
+          : item
+      )
+    );
+
+    try {
+      const response = await fetch('/api/video', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: createBulkVideoPrompt(bulkJob.productDescription),
+          provider,
+          aspectRatio,
+        }),
+      });
+      const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
+
+      if (response.status === 401) {
+        router.push('/login');
+        router.refresh();
+        throw new Error('Authentication is required.');
+      }
+
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.error ?? `Failed to retry "${bulkJob.productDescription}".`);
+      }
+
+      const retryVideo = payload.data.video;
+
+      setBulkJobs((previousJobs) =>
+        previousJobs.map((item) =>
+          item.id === bulkJobId
+            ? {
+                ...item,
+                videoId: retryVideo.id,
+                status: toBulkJobStatus(retryVideo.status),
+                outputUrl: retryVideo.outputUrl,
+                errorMessage: retryVideo.errorMessage,
+              }
+            : item
+        )
+      );
+      void refreshCurrentUser(setCurrentUser).catch(() => {
+        setBulkErrorMessage('Retry succeeded, but credits could not be refreshed.');
+      });
+    } catch (error: unknown) {
+      setBulkJobs((previousJobs) =>
+        previousJobs.map((item) =>
+          item.id === bulkJobId
+            ? {
+                ...item,
+                status: 'failed',
+                errorMessage:
+                  error instanceof Error ? error.message : 'Failed to retry the bulk generation request.',
+              }
+            : item
+        )
+      );
+    }
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -697,6 +973,86 @@ export default function CreateVideoPage() {
                     onChange={(event) => setCtaText(event.target.value)}
                   />
                 </div>
+              </section>
+
+              <section className={styles.toolPanel} aria-labelledby="bulk-generation-title">
+                <div className={styles.toolHeader}>
+                  <div>
+                    <p className={styles.sectionEyebrow}>Phase 28</p>
+                    <h3 className={styles.toolTitle} id="bulk-generation-title">
+                      Bulk generation
+                    </h3>
+                  </div>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={() => void handleGenerateBulk()}
+                    disabled={isBulkGenerating}
+                    type="button"
+                  >
+                    {isBulkGenerating ? 'Generating...' : 'Generate all'}
+                  </button>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="bulkInput">
+                    Upload list or paste one product per line
+                  </label>
+                  <textarea
+                    id="bulkInput"
+                    className={styles.textarea}
+                    value={bulkInput}
+                    onChange={(event) => setBulkInput(event.target.value)}
+                  />
+                </div>
+
+                <input
+                  accept=".txt,.csv"
+                  className={styles.fileInput}
+                  onChange={(event) => void handleBulkFileUpload(event)}
+                  type="file"
+                />
+
+                <div className={styles.progressList}>
+                  {bulkJobs.length === 0 ? (
+                    <div className={styles.noteCard}>Bulk progress will appear here after you queue the list.</div>
+                  ) : (
+                    bulkJobs.map((bulkJob) => (
+                      <article className={styles.progressCard} key={bulkJob.id}>
+                        <div>
+                          <p className={styles.hookText}>{bulkJob.productDescription}</p>
+                          <p className={styles.toolHint}>
+                            {bulkJob.status}
+                            {bulkJob.videoId ? ` · ${bulkJob.videoId}` : ''}
+                          </p>
+                        </div>
+                        <div className={styles.progressActions}>
+                          {bulkJob.outputUrl ? (
+                            <a
+                              className={styles.ghostButton}
+                              href={bulkJob.outputUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              Open
+                            </a>
+                          ) : null}
+                          {bulkJob.status === 'failed' ? (
+                            <button
+                              className={styles.ghostButton}
+                              onClick={() => void handleRetryBulkJob(bulkJob.id)}
+                              type="button"
+                            >
+                              Retry failed
+                            </button>
+                          ) : null}
+                        </div>
+                        {bulkJob.errorMessage ? <p className={styles.error}>{bulkJob.errorMessage}</p> : null}
+                      </article>
+                    ))
+                  )}
+                </div>
+
+                {bulkErrorMessage ? <p className={styles.error}>{bulkErrorMessage}</p> : null}
               </section>
 
               <div className={styles.fieldRow}>
@@ -979,4 +1335,33 @@ function getExportFrameClassName(
   }
 
   return classNames.exportPreviewTall;
+}
+
+function toBulkJobStatus(videoStatus: string): BulkJobStatus {
+  if (videoStatus === 'completed') {
+    return 'completed';
+  }
+
+  if (videoStatus === 'failed') {
+    return 'failed';
+  }
+
+  if (videoStatus === 'processing') {
+    return 'processing';
+  }
+
+  return 'queued';
+}
+
+async function refreshCurrentUser(
+  setCurrentUser: Dispatch<SetStateAction<CurrentUser | null>>
+): Promise<void> {
+  const response = await fetch('/api/auth/session', {
+    cache: 'no-store',
+  });
+  const payload = (await response.json()) as ApiEnvelope<CurrentUser>;
+
+  if (response.ok && payload.success && payload.data) {
+    setCurrentUser(payload.data);
+  }
 }
