@@ -182,6 +182,7 @@ export default function CreateVideoPage() {
   const [watermarkPosition, setWatermarkPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
   const [referralCode] = useState('REEVIO-START');
   const [referralCredits] = useState(30);
+  const [autoMachineNotice, setAutoMachineNotice] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -448,41 +449,14 @@ export default function CreateVideoPage() {
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch('/api/video', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: composedPrompt,
-          provider,
-          aspectRatio,
-        }),
-      });
-
-      const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
-
-      if (response.status === 401) {
-        router.push('/login');
-        router.refresh();
-        return;
-      }
-
-      if (!response.ok || !payload.success || !payload.data) {
-        setErrorMessage(payload.error ?? 'Failed to generate video.');
-        return;
-      }
-
-      setVideo(payload.data.video);
-      setCurrentUser((previousUser) => {
-        if (!previousUser || !payload.data) {
-          return previousUser;
-        }
-
-        return {
-          ...previousUser,
-          credits: payload.data.remainingCredits,
-        };
+      await submitVideoRequest({
+        promptToSend: composedPrompt,
+        router,
+        provider,
+        aspectRatio,
+        setVideo,
+        setCurrentUser,
+        setErrorMessage,
       });
     });
   };
@@ -925,6 +899,45 @@ export default function CreateVideoPage() {
 
     void navigator.clipboard.writeText(referralCode).catch(() => {
       setErrorMessage('Failed to copy the referral code.');
+      });
+  };
+
+  const handleRunAutoContentMachine = (): void => {
+    const autoHooks = createHookOptions({
+      productDescription: hookSource,
+      seed: 0,
+    });
+    const autoHook = autoHooks[0] ?? null;
+    const autoCtaText = createCtaText({
+      productDescription: hookSource,
+      seed: 0,
+      type: 'urgency',
+    });
+    const autoPrompt =
+      hookSource.trim().length > 0
+        ? `Create a ready-to-publish affiliate video for ${hookSource.trim()} with auto script, auto video, and auto voiceover.`
+        : 'Create a ready-to-publish affiliate video with auto script, auto video, and auto voiceover.';
+
+    setHookOptions(autoHooks);
+    setSelectedHookId(autoHook?.id ?? null);
+    setCtaText(autoCtaText);
+    setPrompt(autoPrompt);
+    setAutoMachineNotice('Auto pipeline prepared for 1-click generation.');
+
+    startTransition(async () => {
+      await submitVideoRequest({
+        promptToSend: buildPromptWithCreativeDirectives({
+          prompt: autoPrompt,
+          selectedHookText: autoHook?.text ?? null,
+          ctaText: autoCtaText,
+        }),
+        router,
+        provider,
+        aspectRatio,
+        setVideo,
+        setCurrentUser,
+        setErrorMessage,
+      });
     });
   };
 
@@ -1960,6 +1973,31 @@ export default function CreateVideoPage() {
               </div>
             </section>
 
+            <section className={styles.toolPanel} aria-labelledby="auto-machine-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 41</p>
+                  <h3 className={styles.toolTitle} id="auto-machine-title">
+                    Auto content machine
+                  </h3>
+                </div>
+                <button
+                  className={styles.secondaryButton}
+                  onClick={handleRunAutoContentMachine}
+                  type="button"
+                >
+                  1-click video
+                </button>
+              </div>
+
+              <div className={styles.progressCard}>
+                <strong>Pipeline</strong>
+                <p className={styles.previewPrompt}>Auto script, auto video, auto voiceover, ready output.</p>
+              </div>
+
+              {autoMachineNotice ? <p className={styles.toolHint}>{autoMachineNotice}</p> : null}
+            </section>
+
             <div className={styles.noteGrid}>
               {workflowNotes.map((note) => (
                 <div className={styles.noteCard} key={note}>
@@ -2072,4 +2110,53 @@ async function refreshCurrentUser(
   if (response.ok && payload.success && payload.data) {
     setCurrentUser(payload.data);
   }
+}
+
+async function submitVideoRequest(input: {
+  readonly promptToSend: string;
+  readonly router: {
+    push: (href: string) => void;
+    refresh: () => void;
+  };
+  readonly provider: string;
+  readonly aspectRatio: string;
+  readonly setVideo: Dispatch<SetStateAction<VideoResponse | null>>;
+  readonly setCurrentUser: Dispatch<SetStateAction<CurrentUser | null>>;
+  readonly setErrorMessage: Dispatch<SetStateAction<string | null>>;
+}): Promise<void> {
+  const response = await fetch('/api/video', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: input.promptToSend,
+      provider: input.provider,
+      aspectRatio: input.aspectRatio,
+    }),
+  });
+  const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
+
+  if (response.status === 401) {
+    input.router.push('/login');
+    input.router.refresh();
+    return;
+  }
+
+  if (!response.ok || !payload.success || !payload.data) {
+    input.setErrorMessage(payload.error ?? 'Failed to generate video.');
+    return;
+  }
+
+  input.setVideo(payload.data.video);
+  input.setCurrentUser((previousUser) => {
+    if (!previousUser || !payload.data) {
+      return previousUser;
+    }
+
+    return {
+      ...previousUser,
+      credits: payload.data.remainingCredits,
+    };
+  });
 }
