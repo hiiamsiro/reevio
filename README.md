@@ -28,7 +28,7 @@ Run the apps on your machine and keep only infrastructure external.
 # Install dependencies
 pnpm install
 
-# Copy environment variables
+# Copy local development environment variables
 cp .env.example .env
 
 # Start only infrastructure with Docker
@@ -133,7 +133,7 @@ packages/
 
 ## Environment Variables
 
-Use `.env.example` when running source locally. Docker Compose already sets the core development variables for containerized services.
+Use `.env.example` for local development and rename it to `.env`. Use `.env.production.example` as a reference when preparing a production deployment. Docker Compose already sets the core development variables for containerized services.
 
 Key variables:
 

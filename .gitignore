@@ -17,7 +17,7 @@ apps/*/.turbo/
 # Test coverage
 coverage/
 
-# Environment files (keep only .env.example)
+# Environment files
 .env
 .env.local
 .env.*.local
