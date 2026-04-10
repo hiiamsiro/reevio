@@ -223,6 +223,13 @@ export default function CreateVideoPage() {
   const storageUrl =
     video?.outputUrl ??
     `https://cdn.reevio.app/secure/${provider}/${aspectRatio.replace(':', 'x')}/preview.mp4`;
+  const monitoringStats = {
+    failedJobs: bulkJobs.filter((bulkJob) => bulkJob.status === 'failed').length,
+    activeJobs: bulkJobs.filter(
+      (bulkJob) => bulkJob.status === 'queued' || bulkJob.status === 'processing'
+    ).length,
+    latestError: bulkJobs.find((bulkJob) => bulkJob.errorMessage)?.errorMessage ?? 'No recent failures.',
+  };
   const hasEnoughCredits =
     currentUser !== null && selectedProvider !== null
       ? currentUser.credits >= selectedProvider.creditCost
@@ -1854,6 +1861,37 @@ export default function CreateVideoPage() {
                   <span className={styles.metaBadge}>Secure access</span>
                   <span className={styles.metaBadge}>CDN edge ready</span>
                 </div>
+              </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="monitoring-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 38</p>
+                  <h3 className={styles.toolTitle} id="monitoring-title">
+                    Monitoring
+                  </h3>
+                </div>
+              </div>
+
+              <div className={styles.scoreGrid}>
+                <div className={styles.heroMetric}>
+                  <span>Failed jobs</span>
+                  <strong>{monitoringStats.failedJobs}</strong>
+                </div>
+                <div className={styles.heroMetric}>
+                  <span>Active jobs</span>
+                  <strong>{monitoringStats.activeJobs}</strong>
+                </div>
+                <div className={styles.heroMetric}>
+                  <span>System</span>
+                  <strong>{monitoringStats.failedJobs === 0 ? 'Healthy' : 'Attention'}</strong>
+                </div>
+              </div>
+
+              <div className={styles.progressCard}>
+                <strong>Latest error</strong>
+                <p className={styles.previewPrompt}>{monitoringStats.latestError}</p>
               </div>
             </section>
 
