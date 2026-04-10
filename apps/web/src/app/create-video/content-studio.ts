@@ -48,6 +48,12 @@ export interface PostingPreparation {
   readonly hashtags: string;
 }
 
+export interface HashtagSuggestionSet {
+  readonly trending: string[];
+  readonly niche: string[];
+  readonly combined: string;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -88,12 +94,45 @@ export function createPostingPreparation(input: PostingPreparationInput): Postin
   });
   const summary = getPreviewBody(input.prompt);
   const ctaLine = input.ctaText?.trim() || 'Watch the full cut and grab the offer.';
-  const hashtags = createHashtagList(input.prompt);
+  const hashtags = createHashtagSuggestionSet({
+    prompt: input.prompt,
+    seed: 0,
+  });
 
   return {
     title: headline.length > 68 ? `${headline.slice(0, 65)}...` : headline,
     caption: `${headline}\n\n${summary}\n\n${ctaLine}`,
-    hashtags: hashtags.join(' '),
+    hashtags: hashtags.combined,
+  };
+}
+
+export function createHashtagSuggestionSet(input: {
+  readonly prompt: string;
+  readonly seed: number;
+}): HashtagSuggestionSet {
+  const productFocus = getProductFocus(normalizeProductDescription(input.prompt));
+  const compactProductFocus = productFocus.replace(/\s+/g, '');
+  const trendingPool = [
+    '#fyp',
+    '#viralvideo',
+    '#contentmarketing',
+    '#brandgrowth',
+    '#productlaunch',
+  ];
+  const nichePool = [
+    `#${compactProductFocus}`,
+    `#${compactProductFocus}tips`,
+    '#ugcadcreative',
+    '#scrollstoppingads',
+    '#offercreative',
+  ];
+  const trending = rotateList(trendingPool, input.seed).slice(0, 3);
+  const niche = rotateList(nichePool, input.seed).slice(0, 3);
+
+  return {
+    trending,
+    niche,
+    combined: [...trending, ...niche].join(' '),
   };
 }
 
@@ -316,15 +355,12 @@ function getPreviewBody(prompt: string): string {
   return normalizedPrompt.length > 96 ? `${normalizedPrompt.slice(0, 93)}...` : normalizedPrompt;
 }
 
-function createHashtagList(prompt: string): string[] {
-  const productFocus = getProductFocus(normalizeProductDescription(prompt));
-  const compactProductFocus = productFocus.replace(/\s+/g, '');
+function rotateList(values: readonly string[], seed: number): string[] {
+  if (values.length === 0) {
+    return [];
+  }
 
-  return [
-    '#reevio',
-    '#videomarketing',
-    `#${compactProductFocus}`,
-    '#ugcads',
-    '#contentengine',
-  ];
+  const safeSeed = seed % values.length;
+
+  return [...values.slice(safeSeed), ...values.slice(0, safeSeed)];
 }

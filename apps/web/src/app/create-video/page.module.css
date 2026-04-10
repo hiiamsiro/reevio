@@ -507,6 +507,12 @@
   gap: 0.75rem;
 }
 
+.tagList {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 .fileInput {
   width: 100%;
   min-height: 44px;

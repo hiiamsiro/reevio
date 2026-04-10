@@ -7,6 +7,7 @@ import {
   buildPromptWithCreativeDirectives,
   createBulkVideoPrompt,
   createExportFormats,
+  createHashtagSuggestionSet,
   createCtaText,
   createHookOptions,
   createPostingPreparation,
@@ -15,6 +16,7 @@ import {
   type CtaType,
   type ExportFormatDefinition,
   type ExportFormatId,
+  type HashtagSuggestionSet,
   type HookOption,
   type PostingPreparation,
 } from './content-studio';
@@ -145,6 +147,14 @@ export default function CreateVideoPage() {
     })
   );
   const [postingNotice, setPostingNotice] = useState<string | null>(null);
+  const [hashtagSeed, setHashtagSeed] = useState(0);
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<HashtagSuggestionSet>(() =>
+    createHashtagSuggestionSet({
+      prompt: INITIAL_PROMPT,
+      seed: 0,
+    })
+  );
+  const [hashtagNotice, setHashtagNotice] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -764,6 +774,43 @@ export default function CreateVideoPage() {
       .catch(() => {
         setPostingNotice(`Failed to copy ${label.toLowerCase()}.`);
       });
+  };
+
+  const handleRegenerateHashtags = (): void => {
+    const nextSeed = hashtagSeed + 1;
+
+    setHashtagSeed(nextSeed);
+    setHashtagSuggestions(
+      createHashtagSuggestionSet({
+        prompt,
+        seed: nextSeed,
+      })
+    );
+    setHashtagNotice(null);
+  };
+
+  const handleCopyHashtags = (): void => {
+    if (!navigator.clipboard) {
+      setHashtagNotice('Clipboard is unavailable in this browser. Copy manually.');
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(hashtagSuggestions.combined)
+      .then(() => {
+        setHashtagNotice('Hashtag set copied.');
+      })
+      .catch(() => {
+        setHashtagNotice('Failed to copy hashtags.');
+      });
+  };
+
+  const handleUseHashtagsInPosting = (): void => {
+    setPostingPreparation((previousPostingPreparation) => ({
+      ...previousPostingPreparation,
+      hashtags: hashtagSuggestions.combined,
+    }));
+    setHashtagNotice('Hashtag set moved into posting preparation.');
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -1409,6 +1456,69 @@ export default function CreateVideoPage() {
               </div>
 
               {postingNotice ? <p className={styles.toolHint}>{postingNotice}</p> : null}
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="hashtag-generator-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 30</p>
+                  <h3 className={styles.toolTitle} id="hashtag-generator-title">
+                    Hashtag generator
+                  </h3>
+                </div>
+                <div className={styles.progressActions}>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={handleRegenerateHashtags}
+                    type="button"
+                  >
+                    Regenerate
+                  </button>
+                  <button
+                    className={styles.ghostButton}
+                    onClick={handleCopyHashtags}
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.progressCard}>
+                <span className={styles.selectedHookLabel}>Trending mix</span>
+                <div className={styles.tagList}>
+                  {hashtagSuggestions.trending.map((hashtag) => (
+                    <span className={styles.metaBadge} key={hashtag}>
+                      {hashtag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.progressCard}>
+                <span className={styles.selectedHookLabel}>Niche mix</span>
+                <div className={styles.tagList}>
+                  {hashtagSuggestions.niche.map((hashtag) => (
+                    <span className={styles.metaBadge} key={hashtag}>
+                      {hashtag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.progressCard}>
+                <span className={styles.selectedHookLabel}>Copy-ready set</span>
+                <p className={styles.previewPrompt}>{hashtagSuggestions.combined}</p>
+                <button
+                  className={styles.secondaryButton}
+                  onClick={handleUseHashtagsInPosting}
+                  type="button"
+                >
+                  Use in posting prep
+                </button>
+              </div>
+
+              {hashtagNotice ? <p className={styles.toolHint}>{hashtagNotice}</p> : null}
             </section>
 
             <div className={styles.noteGrid}>
