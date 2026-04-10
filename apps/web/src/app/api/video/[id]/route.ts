@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
-import { ApiResponse } from '@reevio/types';
-import { clearSessionCookie, getSessionToken } from '@/lib/auth-session';
-import { createApiErrorResponse, fetchApi, toProxyResponse } from '@/lib/server-api';
+import { getSessionToken } from '@/lib/auth-session';
+import {
+  createApiErrorResponse,
+  createUnauthorizedApiErrorResponse,
+  fetchApi,
+  toProxyResponse,
+} from '@/lib/server-api';
 
 interface RouteContext {
   readonly params: Promise<{
@@ -24,11 +28,7 @@ export async function GET(_request: Request, context: RouteContext): Promise<Nex
   });
 
   if (response.status === 401) {
-    const nextResponse = createApiErrorResponse(401, 'Authentication is required.');
-
-    clearSessionCookie(nextResponse);
-
-    return nextResponse;
+    return createUnauthorizedApiErrorResponse();
   }
 
   return toProxyResponse(response, 'Failed to refresh video.');

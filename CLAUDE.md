@@ -53,6 +53,7 @@ Turbo monorepo with workspace packages. Each app is independent and has its own 
 - Run `pnpm run typecheck` after making a series of code changes
 - Prefer fixing the root cause over adding workarounds
 - When unsure about approach, use plan mode before coding
+- For new or edited code, keep `type` and `interface` declarations in dedicated `*.types.ts` files instead of mixing them into component, route, service, helper, or feature logic files
 
 ## Don'ts
 

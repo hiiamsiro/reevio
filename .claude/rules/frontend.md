@@ -53,6 +53,7 @@ Use whatever the project already has. Don't mix competing libraries.
 - CSS Grid for 2D, Flexbox for 1D. Use `gap`, not margin hacks.
 - Semantic HTML: `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<footer>`.
 - Mobile-first. Touch targets: minimum 44x44px.
+- Keep frontend `type` and `interface` declarations in sibling `*.types.ts` files, not inside component or page files.
 
 ## Accessibility (non-negotiable)
 

@@ -49,3 +49,5 @@ Must have an owner + issue link. Don't commit TODOs you can do now. Never use `X
 - **Imports**: builtins → external → internal → relative → types. Blank line between groups.
 - **Exports**: named over default. Export at declaration site. One component/class per file.
 - **Functions**: public first, then private helpers in call order. Top-to-bottom reads as a story.
+- **Types**: keep `type` and `interface` declarations in dedicated `*.types.ts` files. Do not declare them inside components, routes, services, helpers, or feature logic files.
+- **Type exceptions**: allow inline types only for framework-mandated module augmentation, third-party declaration merging, or one-off generic constraints that cannot live cleanly in a `*.types.ts` file.

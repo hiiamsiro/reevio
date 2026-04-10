@@ -7,15 +7,13 @@ const PROTECTED_ROUTES = ['/create-video', '/pricing'];
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
-  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const hasValidSession = await isSessionTokenActive(sessionToken);
 
   if (pathname === '/') {
-    const nextUrl = request.nextUrl.clone();
-    nextUrl.pathname = hasValidSession ? '/create-video' : '/login';
-
-    return NextResponse.redirect(nextUrl);
+    return NextResponse.next();
   }
+
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const hasValidSession = await isSessionTokenActive(sessionToken);
 
   if (AUTH_ROUTES.has(pathname) && hasValidSession) {
     const nextUrl = request.nextUrl.clone();
@@ -35,7 +33,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/register', '/create-video/:path*'],
+  matcher: ['/login', '/register', '/create-video/:path*'],
 };
 
 async function isSessionTokenActive(sessionToken: string | undefined): Promise<boolean> {

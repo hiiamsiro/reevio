@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ApiResponse } from '@reevio/types';
+import { clearSessionCookie } from '@/lib/auth-session';
 
 const API_BASE_URL = process.env.API_URL ?? 'http://localhost:4000';
 
@@ -31,14 +32,25 @@ export async function fetchApi(options: ApiRequestOptions): Promise<Response> {
   });
 }
 
-export function createApiErrorResponse(status: number, error: string): NextResponse {
-  return NextResponse.json<ApiResponse>({
+export function createApiErrorResponse<T = unknown>(
+  status: number,
+  error: string
+): NextResponse<ApiResponse<T>> {
+  return NextResponse.json<ApiResponse<T>>({
     success: false,
     data: null,
     error,
   }, {
     status,
   });
+}
+
+export function createUnauthorizedApiErrorResponse<T = unknown>(): NextResponse<ApiResponse<T>> {
+  const response = createApiErrorResponse<T>(401, 'Authentication is required.');
+
+  clearSessionCookie(response);
+
+  return response;
 }
 
 export async function toProxyResponse(response: Response, fallbackError: string): Promise<NextResponse> {

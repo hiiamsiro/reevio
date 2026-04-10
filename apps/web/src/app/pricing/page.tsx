@@ -1,35 +1,16 @@
 'use client';
 
+import type { ApiResponse } from '@reevio/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { BillingPlanCard } from '@/components/pricing';
+import type {
+  BillingCheckoutResult,
+  BillingPlan,
+  CurrentUser,
+} from './page.types';
 import styles from './page.module.css';
-
-interface ApiEnvelope<TData> {
-  readonly success: boolean;
-  readonly data: TData | null;
-  readonly error: string | null;
-}
-
-interface CurrentUser {
-  readonly email: string;
-  readonly credits: number;
-}
-
-interface BillingPlan {
-  readonly id: 'basic' | 'pro' | 'premium';
-  readonly name: string;
-  readonly description: string;
-  readonly credits: number;
-  readonly priceCents: number;
-  readonly features: readonly string[];
-}
-
-interface BillingCheckoutResult {
-  readonly plan: BillingPlan;
-  readonly remainingCredits: number;
-  readonly paymentReference: string;
-}
 
 export default function PricingPage() {
   const router = useRouter();
@@ -54,8 +35,8 @@ export default function PricingPage() {
         return;
       }
 
-      const sessionPayload = (await sessionResponse.json()) as ApiEnvelope<CurrentUser>;
-      const plansPayload = (await plansResponse.json()) as ApiEnvelope<readonly BillingPlan[]>;
+      const sessionPayload = (await sessionResponse.json()) as ApiResponse<CurrentUser>;
+      const plansPayload = (await plansResponse.json()) as ApiResponse<readonly BillingPlan[]>;
 
       if (
         !sessionResponse.ok ||
@@ -110,7 +91,7 @@ export default function PricingPage() {
           paymentReference,
         }),
       });
-      const payload = (await response.json()) as ApiEnvelope<BillingCheckoutResult>;
+      const payload = (await response.json()) as ApiResponse<BillingCheckoutResult>;
 
       if (!response.ok || !payload.success || !payload.data) {
         setErrorMessage(payload.error ?? 'Failed to purchase credits.');
@@ -209,47 +190,16 @@ export default function PricingPage() {
 
           <div className={styles.plansGrid}>
             {plans.map((plan) => (
-              <article
-                className={`${styles.planCard} ${plan.id === 'pro' ? styles.featured : ''}`}
+              <BillingPlanCard
+                isActive={activePlanId !== null}
                 key={plan.id}
-              >
-                <div className={styles.planMeta}>
-                  <div>
-                    <h3 className={styles.planName}>{plan.name}</h3>
-                    <p className={styles.planDescription}>{plan.description}</p>
-                  </div>
-                  {plan.id === 'pro' ? <span className={styles.planBadge}>Most popular</span> : null}
-                </div>
-
-                <p className={styles.price}>{formatPrice(plan.priceCents)}</p>
-                <p className={styles.credits}>{plan.credits} credits added</p>
-
-                <ul className={styles.featureList}>
-                  {plan.features.map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
-                </ul>
-
-                <button
-                  className={styles.planButton}
-                  type="button"
-                  onClick={() => handleCheckout(plan.id)}
-                  disabled={activePlanId !== null}
-                >
-                  {activePlanId === plan.id ? 'Processing payment...' : `Buy ${plan.name}`}
-                </button>
-              </article>
+                onCheckout={handleCheckout}
+                plan={plan}
+              />
             ))}
           </div>
         </section>
       </div>
     </main>
   );
-}
-
-function formatPrice(priceCents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(priceCents / 100);
 }

@@ -1,7 +1,17 @@
 import Link from 'next/link';
+import {
+  GalleryCard,
+  MarketingPlanCard,
+  WorkflowStepCard,
+} from '@/components/marketing';
+import type {
+  GalleryItem,
+  MarketingPlan,
+  WorkflowStep,
+} from '@/components/marketing/marketing.types';
 import styles from './home.module.css';
 
-const galleryItems = [
+const galleryItems: readonly GalleryItem[] = [
   {
     title: 'Launch Teaser',
     duration: '12 sec',
@@ -40,7 +50,7 @@ const promptExamples = [
   'Generate a SaaS promo showing dashboard transformations, bold captions, and a founder-style voiceover.',
 ];
 
-const workflowSteps = [
+const workflowSteps: readonly WorkflowStep[] = [
   {
     step: '01',
     title: 'Write one prompt',
@@ -58,7 +68,7 @@ const workflowSteps = [
   },
 ];
 
-const pricingPlans = [
+const pricingPlans: readonly MarketingPlan[] = [
   {
     name: 'Starter',
     price: '$24',
@@ -222,22 +232,7 @@ export default function HomePage() {
 
           <div className={styles.galleryGrid}>
             {galleryItems.map((item, index) => (
-              <article className={styles.galleryCard} key={item.title}>
-                <div className={`${styles.galleryVisual} ${styles[`galleryTone${index + 1}`]}`}>
-                  <span className={styles.galleryRatio}>{item.ratio}</span>
-                </div>
-                <div className={styles.galleryBody}>
-                  <div className={styles.galleryHeader}>
-                    <h3>{item.title}</h3>
-                    <span>{item.duration}</span>
-                  </div>
-                  <p>{item.tone}</p>
-                  <div className={styles.galleryMeta}>
-                    <span>{item.credits}</span>
-                    <span>Preview ready</span>
-                  </div>
-                </div>
-              </article>
+              <GalleryCard item={item} key={item.title} toneIndex={index + 1} />
             ))}
           </div>
         </section>
@@ -291,11 +286,7 @@ export default function HomePage() {
 
           <div className={styles.workflowGrid}>
             {workflowSteps.map((item) => (
-              <article className={styles.workflowCard} key={item.step}>
-                <span className={styles.workflowStep}>{item.step}</span>
-                <h3>{item.title}</h3>
-                <p>{item.copy}</p>
-              </article>
+              <WorkflowStepCard item={item} key={item.step} />
             ))}
           </div>
         </section>
@@ -312,26 +303,7 @@ export default function HomePage() {
 
           <div className={styles.pricingGrid}>
             {pricingPlans.map((plan) => (
-              <article
-                className={`${styles.pricingCard} ${plan.featured ? styles.pricingFeatured : ''}`}
-                key={plan.name}
-              >
-                <div className={styles.pricingTop}>
-                  <div>
-                    <h3>{plan.name}</h3>
-                    <p>{plan.description}</p>
-                  </div>
-                  {plan.featured ? <span className={styles.planBadge}>Most popular</span> : null}
-                </div>
-                <p className={styles.price}>{plan.price}</p>
-                <p className={styles.credits}>{plan.credits}</p>
-                <div className={styles.planDivider} />
-                <ul className={styles.featureList}>
-                  {plan.features.map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
-                </ul>
-              </article>
+              <MarketingPlanCard key={plan.name} plan={plan} />
             ))}
           </div>
         </section>

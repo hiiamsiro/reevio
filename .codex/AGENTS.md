@@ -89,6 +89,8 @@
 - Organize imports in groups: builtins, external, internal, relative, then types.
 - Prefer named exports over default exports.
 - Keep public functions first, then private helpers in call order.
+- Keep `type` and `interface` declarations in dedicated `*.types.ts` files instead of mixing them into components, routes, services, helpers, or feature logic files.
+- Allow inline types only for module augmentation, declaration merging, or one-off generic constraints that do not fit cleanly in a `*.types.ts` file.
 
 ### Testing Rules
 
@@ -138,6 +140,7 @@ Apply these rules to frontend paths such as `apps/web/**/*.tsx`, `apps/web/**/*.
 - Use CSS Grid for 2D layouts, Flexbox for 1D layouts, and prefer `gap` over margin hacks.
 - Use semantic HTML elements.
 - Build mobile-first and keep touch targets at least `44x44px`.
+- Keep frontend `type` and `interface` declarations in sibling `*.types.ts` files, not inside component or page files.
 - Accessibility is mandatory: keyboard support, correct labels, meaningful alt text, visible focus states, sufficient contrast, and no color-only indicators.
 - Respect `prefers-reduced-motion` and `prefers-color-scheme`.
 - Use lazy loading for below-the-fold images and specify image dimensions.

@@ -1,83 +1,21 @@
-export interface HookGeneratorInput {
-  readonly productDescription: string;
-  readonly seed: number;
-}
-
-export type CtaType = 'urgency' | 'scarcity' | 'discount';
-export type ExportFormatId = 'tiktok-9x16' | 'instagram-1x1' | 'instagram-4x5';
-
-export interface HookOption {
-  readonly id: string;
-  readonly text: string;
-  readonly angle: string;
-}
-
-export interface CtaGeneratorInput {
-  readonly productDescription: string;
-  readonly seed: number;
-  readonly type: CtaType;
-}
-
-export interface ExportFormatInput {
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}
-
-export interface ExportFormatDefinition {
-  readonly id: ExportFormatId;
-  readonly platform: string;
-  readonly label: string;
-  readonly aspectRatio: '9:16' | '1:1' | '4:5';
-  readonly canvas: string;
-  readonly layoutLabel: string;
-  readonly previewHeadline: string;
-  readonly previewBody: string;
-  readonly ctaLabel: string;
-}
-
-export interface PostingPreparationInput {
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}
-
-export interface PostingPreparation {
-  readonly title: string;
-  readonly caption: string;
-  readonly hashtags: string;
-}
-
-export interface HashtagSuggestionSet {
-  readonly trending: string[];
-  readonly niche: string[];
-  readonly combined: string;
-}
-
-export interface ViralScoreAnalysis {
-  readonly score: number;
-  readonly hook: number;
-  readonly emotion: number;
-  readonly length: number;
-}
-
-export interface RewriteVariationInput {
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}
-
-export interface TrendIdea {
-  readonly topic: string;
-  readonly idea: string;
-}
-
-export interface VideoTemplateDefinition {
-  readonly id: string;
-  readonly name: string;
-  readonly preview: string;
-  readonly prompt: string;
-}
+import type {
+  CtaGeneratorInput,
+  CtaType,
+  ExportFormatDefinition,
+  ExportFormatInput,
+  HashtagSuggestionInput,
+  HashtagSuggestionSet,
+  HookGeneratorInput,
+  HookOption,
+  PostingPreparation,
+  PostingPreparationInput,
+  PromptWithCreativeDirectivesInput,
+  RewriteVariationInput,
+  TrendIdea,
+  VideoTemplateDefinition,
+  ViralScoreAnalysis,
+  ViralScoreAnalysisInput,
+} from './content-studio.types';
 
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
@@ -86,10 +24,11 @@ export function createBulkVideoPrompt(productDescription: string): string {
     return '';
   }
 
-  const hookText = createHookOptions({
-    productDescription: normalizedDescription,
-    seed: 0,
-  })[0]?.text ?? null;
+  const hookText =
+    createHookOptions({
+      productDescription: normalizedDescription,
+      seed: 0,
+    })[0]?.text ?? null;
   const ctaText = createCtaText({
     productDescription: normalizedDescription,
     seed: 0,
@@ -131,10 +70,9 @@ export function createPostingPreparation(input: PostingPreparationInput): Postin
   };
 }
 
-export function createHashtagSuggestionSet(input: {
-  readonly prompt: string;
-  readonly seed: number;
-}): HashtagSuggestionSet {
+export function createHashtagSuggestionSet(
+  input: HashtagSuggestionInput
+): HashtagSuggestionSet {
   const productFocus = getProductFocus(normalizeProductDescription(input.prompt));
   const compactProductFocus = productFocus.replace(/\s+/g, '');
   const trendingPool = [
@@ -161,11 +99,9 @@ export function createHashtagSuggestionSet(input: {
   };
 }
 
-export function createViralScoreAnalysis(input: {
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}): ViralScoreAnalysis {
+export function createViralScoreAnalysis(
+  input: ViralScoreAnalysisInput
+): ViralScoreAnalysis {
   const promptText = input.prompt.trim();
   const hookScore = input.selectedHookText?.trim() ? 35 : 18;
   const emotionScore = hasEmotionSignal(promptText, input.ctaText) ? 33 : 20;
@@ -182,7 +118,10 @@ export function createViralScoreAnalysis(input: {
 
 export function createRewriteVariations(input: RewriteVariationInput): string[] {
   const normalizedPrompt = input.prompt.trim();
-  const basePrompt = normalizedPrompt.length > 0 ? normalizedPrompt : 'Create a conversion-focused product video.';
+  const basePrompt =
+    normalizedPrompt.length > 0
+      ? normalizedPrompt
+      : 'Create a conversion-focused product video.';
   const hookLine = input.selectedHookText?.trim()
     ? `Lead with ${input.selectedHookText.trim().toLowerCase()}`
     : 'Lead with a fast curiosity hook';
@@ -220,19 +159,22 @@ export function createVideoTemplates(): VideoTemplateDefinition[] {
       id: 'ugc-proof',
       name: 'UGC Proof Stack',
       preview: 'Fast creator hook, testimonial beat, offer close.',
-      prompt: 'Create a creator-led proof video with a fast hook, testimonial proof, and a strong CTA.',
+      prompt:
+        'Create a creator-led proof video with a fast hook, testimonial proof, and a strong CTA.',
     },
     {
       id: 'premium-reveal',
       name: 'Premium Reveal',
       preview: 'Luxury pacing, close-up product reveal, clean end card.',
-      prompt: 'Create a premium reveal video with slow product shots, sensory copy, and a polished CTA.',
+      prompt:
+        'Create a premium reveal video with slow product shots, sensory copy, and a polished CTA.',
     },
     {
       id: 'feature-flip',
       name: 'Feature Flip',
       preview: 'Open on pain point, show product shift, land the payoff.',
-      prompt: 'Create a feature-first video that opens on frustration, flips to solution, and closes on value.',
+      prompt:
+        'Create a feature-first video that opens on frustration, flips to solution, and closes on value.',
     },
   ];
 }
@@ -294,15 +236,17 @@ export function createCtaText(input: CtaGeneratorInput): string {
   return capitalizeHookText(selectedTemplate.replace('{product}', productFocus));
 }
 
-export function buildPromptWithCreativeDirectives(input: {
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}): string {
+export function buildPromptWithCreativeDirectives(
+  input: PromptWithCreativeDirectivesInput
+): string {
   const normalizedPrompt = input.prompt.trim();
   const directives = [
-    input.selectedHookText ? `${FALLBACK_HOOK_PREFIX}: "${input.selectedHookText}"` : null,
-    input.ctaText ? `Close with CTA at the end of the video: "${input.ctaText.trim()}"` : null,
+    input.selectedHookText
+      ? `${FALLBACK_HOOK_PREFIX}: "${input.selectedHookText}"`
+      : null,
+    input.ctaText
+      ? `Close with CTA at the end of the video: "${input.ctaText.trim()}"`
+      : null,
   ].filter((directive): directive is string => directive !== null && directive.trim().length > 0);
 
   if (directives.length === 0) {
@@ -320,7 +264,9 @@ export function toCtaTypeLabel(type: CtaType): string {
   return capitalizeHookText(type);
 }
 
-export function createExportFormats(input: ExportFormatInput): ExportFormatDefinition[] {
+export function createExportFormats(
+  input: ExportFormatInput
+): ExportFormatDefinition[] {
   const previewHeadline = getPreviewHeadline(input);
   const previewBody = getPreviewBody(input.prompt);
   const ctaLabel = input.ctaText?.trim() || 'Add CTA before export';
@@ -332,7 +278,8 @@ export function createExportFormats(input: ExportFormatInput): ExportFormatDefin
       label: 'TikTok 9:16',
       aspectRatio: '9:16',
       canvas: '1080 x 1920',
-      layoutLabel: 'Tall layout with stacked headline, center-safe product framing, and bottom CTA.',
+      layoutLabel:
+        'Tall layout with stacked headline, center-safe product framing, and bottom CTA.',
       previewHeadline,
       previewBody,
       ctaLabel,
@@ -343,7 +290,8 @@ export function createExportFormats(input: ExportFormatInput): ExportFormatDefin
       label: 'Instagram 1:1',
       aspectRatio: '1:1',
       canvas: '1080 x 1080',
-      layoutLabel: 'Balanced square layout with centered focal subject and tighter caption density.',
+      layoutLabel:
+        'Balanced square layout with centered focal subject and tighter caption density.',
       previewHeadline,
       previewBody,
       ctaLabel,
@@ -354,7 +302,8 @@ export function createExportFormats(input: ExportFormatInput): ExportFormatDefin
       label: 'Instagram 4:5',
       aspectRatio: '4:5',
       canvas: '1080 x 1350',
-      layoutLabel: 'Feed-optimized portrait layout with larger product crop and CTA-safe lower third.',
+      layoutLabel:
+        'Feed-optimized portrait layout with larger product crop and CTA-safe lower third.',
       previewHeadline,
       previewBody,
       ctaLabel,
@@ -453,7 +402,9 @@ function getPreviewBody(prompt: string): string {
     return 'Add a prompt to preview format-specific layout decisions.';
   }
 
-  return normalizedPrompt.length > 96 ? `${normalizedPrompt.slice(0, 93)}...` : normalizedPrompt;
+  return normalizedPrompt.length > 96
+    ? `${normalizedPrompt.slice(0, 93)}...`
+    : normalizedPrompt;
 }
 
 function rotateList(values: readonly string[], seed: number): string[] {
@@ -468,7 +419,16 @@ function rotateList(values: readonly string[], seed: number): string[] {
 
 function hasEmotionSignal(prompt: string, ctaText: string | null): boolean {
   const combinedText = `${prompt} ${ctaText ?? ''}`.toLowerCase();
-  const emotionalKeywords = ['wow', 'love', 'feel', 'obsession', 'secret', 'wait', 'must', 'fast'];
+  const emotionalKeywords = [
+    'wow',
+    'love',
+    'feel',
+    'obsession',
+    'secret',
+    'wait',
+    'must',
+    'fast',
+  ];
 
   return emotionalKeywords.some((keyword) => combinedText.includes(keyword));
 }

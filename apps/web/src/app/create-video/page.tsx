@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { type Dispatch, type SetStateAction, useDeferredValue, useEffect, useState, useTransition } from 'react';
+import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import {
   buildPromptWithCreativeDirectives,
   createBulkVideoPrompt,
@@ -16,7 +16,6 @@ import {
   createVideoTemplates,
   createViralScoreAnalysis,
   parseBulkProductList,
-  toCtaTypeLabel,
   type CtaType,
   type ExportFormatDefinition,
   type ExportFormatId,
@@ -25,91 +24,50 @@ import {
   type PostingPreparation,
   type ViralScoreAnalysis,
 } from './content-studio';
+import {
+  INITIAL_HOOK_SOURCE,
+  INITIAL_PROMPT,
+  promptPresets,
+  styleModes,
+  workflowNotes,
+} from './page.constants';
+import {
+  createExportBrief,
+  createPerformanceInsight,
+  downloadTextFile,
+  toBulkJobStatus,
+  toPriceTierLabel,
+} from './page.helpers';
+import {
+  loadCurrentUser,
+  loadProviders,
+  loadVideo,
+  refreshCurrentUser,
+  requestVideoGeneration,
+  submitVideoRequest,
+} from './page.api';
+import {
+  BulkGenerationPanel,
+  CtaEnginePanel,
+  ExportPanel,
+  HashtagGeneratorPanel,
+  HookGeneratorPanel,
+  PerformanceAiPanel,
+  PostingPreparationPanel,
+  TeamModePanel,
+  TemplateGalleryPanel,
+  TrendIdeasPanel,
+  WatermarkPanel,
+} from './components';
+import type {
+  BulkJobItem,
+  CurrentUser,
+  ProviderDefinition,
+  TeamMember,
+  VideoResponse,
+  WatermarkPosition,
+} from './page.types';
 import styles from './page.module.css';
-
-interface VideoResponse {
-  readonly id: string;
-  readonly prompt: string;
-  readonly provider: string;
-  readonly aspectRatio: string;
-  readonly status: string;
-  readonly title: string | null;
-  readonly outputUrl: string | null;
-  readonly previewUrl: string | null;
-  readonly errorCode: string | null;
-  readonly errorMessage: string | null;
-  readonly voiceoverUrl?: string | null;
-  readonly subtitlesUrl?: string | null;
-}
-
-interface ProviderDefinition {
-  readonly name: string;
-  readonly label: string;
-  readonly description: string;
-  readonly status: 'available' | 'beta' | 'disabled';
-  readonly priceTier: 'free' | 'pro' | 'premium';
-  readonly creditCost: number;
-}
-
-interface ApiEnvelope<T> {
-  readonly success: boolean;
-  readonly data: T | null;
-  readonly error: string | null;
-}
-
-interface CurrentUser {
-  readonly id: string;
-  readonly email: string;
-  readonly plan: string;
-  readonly credits: number;
-}
-
-interface GenerateVideoResponse {
-  readonly video: VideoResponse;
-  readonly remainingCredits: number;
-  readonly creditsCharged: boolean;
-}
-
-type BulkJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
-
-interface BulkJobItem {
-  readonly id: string;
-  readonly productDescription: string;
-  readonly videoId: string | null;
-  readonly status: BulkJobStatus;
-  readonly outputUrl: string | null;
-  readonly errorMessage: string | null;
-}
-
-interface TeamMember {
-  readonly id: string;
-  readonly email: string;
-  readonly role: 'owner' | 'editor';
-}
-
-const promptPresets = [
-  'Create a vertical sneaker launch ad with chrome lighting, fast macro cuts, and a final 15% off CTA.',
-  'Generate a skincare promo with soft glass textures, ingredient callouts, and calm premium narration.',
-  'Build a SaaS feature reveal video with bold captions, UI zoom transitions, and a founder-style voiceover.',
-];
-
-const styleModes = [
-  'Cinematic neon',
-  'Clean product studio',
-  'Creator UGC',
-  'Luxury editorial',
-];
-
-const workflowNotes = [
-  'Credits are reserved before processing starts.',
-  'Failed final renders refund credits automatically.',
-  'Preview state refreshes every 2.5 seconds.',
-  'Voiceover and subtitles appear after orchestration.',
-];
-const INITIAL_HOOK_SOURCE = 'Compact espresso machine for busy home baristas';
-const INITIAL_PROMPT =
-  'Create an affiliate video for a compact espresso machine with strong hook and CTA.';
-const CTA_TYPES: CtaType[] = ['urgency', 'scarcity', 'discount'];
 
 export default function CreateVideoPage() {
   const router = useRouter();
@@ -179,7 +137,8 @@ export default function CreateVideoPage() {
   const [teamNotice, setTeamNotice] = useState<string | null>(null);
   const [watermarkType, setWatermarkType] = useState<'text' | 'logo'>('text');
   const [watermarkText, setWatermarkText] = useState('Reevio');
-  const [watermarkPosition, setWatermarkPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
+  const [watermarkPosition, setWatermarkPosition] =
+    useState<WatermarkPosition>('bottom-right');
   const [referralCode] = useState('REEVIO-START');
   const [referralCredits] = useState(30);
   const [autoMachineNotice, setAutoMachineNotice] = useState<string | null>(null);
@@ -253,68 +212,31 @@ export default function CreateVideoPage() {
   useEffect(() => {
     let isActive = true;
 
-    const loadSession = async () => {
-      const response = await fetch('/api/auth/session', {
-        cache: 'no-store',
+    void Promise.all([loadCurrentUser(router), loadProviders(router)])
+      .then(([session, providerList]) => {
+        if (!isActive || !session || !providerList) {
+          return;
+        }
+
+        setCurrentUser(session);
+        setProviders(providerList);
+      })
+      .catch((error: unknown) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (error instanceof Error) {
+          setErrorMessage(error.message);
+        } else {
+          setErrorMessage('Failed to load providers.');
+        }
       });
-      const payload = (await response.json()) as ApiEnvelope<CurrentUser>;
-
-      if (response.status === 401) {
-        router.push('/login');
-        router.refresh();
-        return;
-      }
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? 'Failed to load session.');
-      }
-
-      if (!isActive) {
-        return;
-      }
-
-      setCurrentUser(payload.data);
-    };
-
-    const loadProviders = async () => {
-      const response = await fetch('/api/providers', {
-        cache: 'no-store',
-      });
-      const payload = (await response.json()) as ApiEnvelope<ProviderDefinition[]>;
-
-      if (response.status === 401) {
-        router.push('/login');
-        router.refresh();
-        return;
-      }
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? 'Failed to load providers.');
-      }
-
-      if (!isActive) {
-        return;
-      }
-
-      setProviders(payload.data);
-    };
-
-    void Promise.all([loadSession(), loadProviders()]).catch((error: unknown) => {
-      if (!isActive) {
-        return;
-      }
-
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('Failed to load providers.');
-      }
-    });
 
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (providers.length === 0) {
@@ -337,38 +259,22 @@ export default function CreateVideoPage() {
       return;
     }
 
-    const refreshVideo = async (): Promise<void> => {
-      const response = await fetch(`/api/video/${video.id}`, {
-        cache: 'no-store',
-      });
-      const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
+    const refreshVideoStatus = async (): Promise<void> => {
+      const nextVideo = await loadVideo(video.id, router, 'Failed to refresh video.');
 
-      if (response.status === 401) {
-        router.push('/login');
-        router.refresh();
+      if (!nextVideo) {
         return;
       }
 
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? 'Failed to refresh video.');
+      if (nextVideo.status === 'failed' || nextVideo.status === 'completed') {
+        await refreshCurrentUser(setCurrentUser);
       }
 
-      if (payload.data.status === 'failed' || payload.data.status === 'completed') {
-        const sessionResponse = await fetch('/api/auth/session', {
-          cache: 'no-store',
-        });
-        const sessionPayload = (await sessionResponse.json()) as ApiEnvelope<CurrentUser>;
-
-        if (sessionResponse.ok && sessionPayload.success && sessionPayload.data) {
-          setCurrentUser(sessionPayload.data);
-        }
-      }
-
-      setVideo(payload.data);
+      setVideo(nextVideo);
     };
 
     const intervalId = window.setInterval(() => {
-      void refreshVideo().catch((error: unknown) => {
+      void refreshVideoStatus().catch((error: unknown) => {
         if (error instanceof Error) {
           setErrorMessage(error.message);
         } else {
@@ -394,26 +300,21 @@ export default function CreateVideoPage() {
     const refreshBulkJobs = async (): Promise<void> => {
       const refreshedJobs = await Promise.all(
         pendingBulkJobs.map(async (bulkJob) => {
-          const response = await fetch(`/api/video/${bulkJob.videoId}`, {
-            cache: 'no-store',
-          });
-          const payload = (await response.json()) as ApiEnvelope<VideoResponse>;
+          const nextVideo = await loadVideo(
+            bulkJob.videoId!,
+            router,
+            `Failed to refresh bulk job "${bulkJob.id}".`
+          );
 
-          if (response.status === 401) {
-            router.push('/login');
-            router.refresh();
+          if (!nextVideo) {
             throw new Error('Authentication is required.');
-          }
-
-          if (!response.ok || !payload.success || !payload.data) {
-            throw new Error(payload.error ?? `Failed to refresh bulk job "${bulkJob.id}".`);
           }
 
           return {
             id: bulkJob.id,
-            status: toBulkJobStatus(payload.data.status),
-            outputUrl: payload.data.outputUrl,
-            errorMessage: payload.data.errorMessage,
+            status: toBulkJobStatus(nextVideo.status),
+            outputUrl: nextVideo.outputUrl,
+            errorMessage: nextVideo.errorMessage,
           };
         })
       );
@@ -630,35 +531,20 @@ export default function CreateVideoPage() {
 
     const settledJobs = await Promise.allSettled(
       initialBulkJobs.map(async (bulkJob) => {
-        const response = await fetch('/api/video', {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: createBulkVideoPrompt(bulkJob.productDescription),
-            provider,
-            aspectRatio,
-          }),
+        const result = await requestVideoGeneration({
+          prompt: createBulkVideoPrompt(bulkJob.productDescription),
+          provider,
+          aspectRatio,
+          router,
+          fallbackError: `Failed to queue "${bulkJob.productDescription}".`,
         });
-        const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
-
-        if (response.status === 401) {
-          router.push('/login');
-          router.refresh();
-          throw new Error('Authentication is required.');
-        }
-
-        if (!response.ok || !payload.success || !payload.data) {
-          throw new Error(payload.error ?? `Failed to queue "${bulkJob.productDescription}".`);
-        }
 
         return {
           id: bulkJob.id,
-          videoId: payload.data.video.id,
-          status: toBulkJobStatus(payload.data.video.status),
-          outputUrl: payload.data.video.outputUrl,
-          errorMessage: payload.data.video.errorMessage,
+          videoId: result.video.id,
+          status: toBulkJobStatus(result.video.status),
+          outputUrl: result.video.outputUrl,
+          errorMessage: result.video.errorMessage,
         };
       })
     );
@@ -714,30 +600,14 @@ export default function CreateVideoPage() {
     );
 
     try {
-      const response = await fetch('/api/video', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: createBulkVideoPrompt(bulkJob.productDescription),
-          provider,
-          aspectRatio,
-        }),
+      const result = await requestVideoGeneration({
+        prompt: createBulkVideoPrompt(bulkJob.productDescription),
+        provider,
+        aspectRatio,
+        router,
+        fallbackError: `Failed to retry "${bulkJob.productDescription}".`,
       });
-      const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
-
-      if (response.status === 401) {
-        router.push('/login');
-        router.refresh();
-        throw new Error('Authentication is required.');
-      }
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? `Failed to retry "${bulkJob.productDescription}".`);
-      }
-
-      const retryVideo = payload.data.video;
+      const retryVideo = result.video;
 
       setBulkJobs((previousJobs) =>
         previousJobs.map((item) =>
@@ -1056,93 +926,18 @@ export default function CreateVideoPage() {
             </div>
 
             <form className={styles.form} onSubmit={handleSubmit}>
-              <section className={styles.toolPanel} aria-labelledby="hook-generator-title">
-                <div className={styles.toolHeader}>
-                  <div>
-                    <p className={styles.sectionEyebrow}>Phase 25</p>
-                    <h3 className={styles.toolTitle} id="hook-generator-title">
-                      Viral hook generator
-                    </h3>
-                  </div>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={handleGenerateHooks}
-                    type="button"
-                  >
-                    Regenerate
-                  </button>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="hookSource">
-                    Product description
-                  </label>
-                  <textarea
-                    id="hookSource"
-                    className={styles.textarea}
-                    value={hookSource}
-                    onChange={(event) => setHookSource(event.target.value)}
-                  />
-                </div>
-
-                <div className={styles.toolActions}>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={handleGenerateHooks}
-                    type="button"
-                  >
-                    Generate 10 hooks
-                  </button>
-                  <span className={styles.toolHint}>
-                    Hooks stay short, emotional, and curiosity-driven.
-                  </span>
-                </div>
-
-                {selectedHook ? (
-                  <div className={styles.selectedHookCard}>
-                    <span className={styles.selectedHookLabel}>Selected hook</span>
-                    <strong>{selectedHook.text}</strong>
-                  </div>
-                ) : null}
-
-                <div className={styles.hookGrid}>
-                  {hookOptions.map((hookOption) => {
-                    const isSelected = hookOption.id === selectedHookId;
-                    const isCopied = hookOption.id === copiedHookId;
-
-                    return (
-                      <article
-                        className={`${styles.hookCard} ${isSelected ? styles.hookCardSelected : ''}`}
-                        key={hookOption.id}
-                      >
-                        <div className={styles.hookCardTop}>
-                          <span className={styles.metaBadge}>{hookOption.angle}</span>
-                          <span className={styles.metaBadge}>{isSelected ? 'Selected' : 'Ready'}</span>
-                        </div>
-                        <p className={styles.hookText}>{hookOption.text}</p>
-                        <div className={styles.hookActions}>
-                          <button
-                            className={styles.ghostButton}
-                            onClick={() => handleCopyHook(hookOption)}
-                            type="button"
-                          >
-                            {isCopied ? 'Copied' : 'Copy'}
-                          </button>
-                          <button
-                            className={styles.ghostButton}
-                            onClick={() => handleSelectHook(hookOption.id)}
-                            type="button"
-                          >
-                            {isSelected ? 'Selected' : 'Select'}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                {hookErrorMessage ? <p className={styles.error}>{hookErrorMessage}</p> : null}
-              </section>
+              <HookGeneratorPanel
+                copiedHookId={copiedHookId}
+                errorMessage={hookErrorMessage}
+                hookOptions={hookOptions}
+                hookSource={hookSource}
+                onCopyHook={handleCopyHook}
+                onGenerateHooks={handleGenerateHooks}
+                onHookSourceChange={setHookSource}
+                onSelectHook={handleSelectHook}
+                selectedHook={selectedHook}
+                selectedHookId={selectedHookId}
+              />
 
               <div className={styles.fieldGroup}>
                 <label className={styles.label} htmlFor="prompt">
@@ -1156,149 +951,25 @@ export default function CreateVideoPage() {
                 />
               </div>
 
-              <section className={styles.toolPanel} aria-labelledby="cta-engine-title">
-                <div className={styles.toolHeader}>
-                  <div>
-                    <p className={styles.sectionEyebrow}>Phase 26</p>
-                    <h3 className={styles.toolTitle} id="cta-engine-title">
-                      CTA engine
-                    </h3>
-                  </div>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={handleRegenerateCta}
-                    type="button"
-                  >
-                    Regenerate CTA
-                  </button>
-                </div>
+              <CtaEnginePanel
+                ctaText={ctaText}
+                ctaType={ctaType}
+                onCtaTextChange={setCtaText}
+                onRegenerateCta={handleRegenerateCta}
+                onSelectCtaType={handleSelectCtaType}
+              />
 
-                <div className={styles.segmentGroup} aria-label="CTA type">
-                  {CTA_TYPES.map((type) => {
-                    const isActive = type === ctaType;
-
-                    return (
-                      <button
-                        aria-pressed={isActive}
-                        className={`${styles.segmentButton} ${isActive ? styles.segmentButtonActive : ''}`}
-                        key={type}
-                        onClick={() => handleSelectCtaType(type)}
-                        type="button"
-                      >
-                        {toCtaTypeLabel(type)}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className={styles.selectedHookCard}>
-                  <span className={styles.selectedHookLabel}>Placement</span>
-                  <strong>End of video</strong>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="ctaText">
-                    CTA copy
-                  </label>
-                  <textarea
-                    id="ctaText"
-                    className={styles.textarea}
-                    value={ctaText}
-                    onChange={(event) => setCtaText(event.target.value)}
-                  />
-                </div>
-              </section>
-
-              <section className={styles.toolPanel} aria-labelledby="bulk-generation-title">
-                <div className={styles.toolHeader}>
-                  <div>
-                    <p className={styles.sectionEyebrow}>Phase 28</p>
-                    <h3 className={styles.toolTitle} id="bulk-generation-title">
-                      Bulk generation
-                    </h3>
-                  </div>
-                  <div className={styles.progressActions}>
-                    <button
-                      className={styles.secondaryButton}
-                      onClick={() => void handleGenerateBulk()}
-                      disabled={isBulkGenerating}
-                      type="button"
-                    >
-                      {isBulkGenerating ? 'Generating...' : 'Generate all'}
-                    </button>
-                    <button
-                      className={styles.ghostButton}
-                      onClick={handleRetryFailedBulkJobs}
-                      type="button"
-                    >
-                      Retry failed only
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="bulkInput">
-                    Upload list or paste one product per line
-                  </label>
-                  <textarea
-                    id="bulkInput"
-                    className={styles.textarea}
-                    value={bulkInput}
-                    onChange={(event) => setBulkInput(event.target.value)}
-                  />
-                </div>
-
-                <input
-                  accept=".txt,.csv"
-                  className={styles.fileInput}
-                  onChange={(event) => void handleBulkFileUpload(event)}
-                  type="file"
-                />
-
-                <p className={styles.toolHint}>Phase 39: retry failed steps only from the current bulk run.</p>
-
-                <div className={styles.progressList}>
-                  {bulkJobs.length === 0 ? (
-                    <div className={styles.noteCard}>Bulk progress will appear here after you queue the list.</div>
-                  ) : (
-                    bulkJobs.map((bulkJob) => (
-                      <article className={styles.progressCard} key={bulkJob.id}>
-                        <div>
-                          <p className={styles.hookText}>{bulkJob.productDescription}</p>
-                          <p className={styles.toolHint}>
-                            {bulkJob.status}
-                            {bulkJob.videoId ? ` · ${bulkJob.videoId}` : ''}
-                          </p>
-                        </div>
-                        <div className={styles.progressActions}>
-                          {bulkJob.outputUrl ? (
-                            <a
-                              className={styles.ghostButton}
-                              href={bulkJob.outputUrl}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              Open
-                            </a>
-                          ) : null}
-                          {bulkJob.status === 'failed' ? (
-                            <button
-                              className={styles.ghostButton}
-                              onClick={() => void handleRetryBulkJob(bulkJob.id)}
-                              type="button"
-                            >
-                              Retry failed
-                            </button>
-                          ) : null}
-                        </div>
-                        {bulkJob.errorMessage ? <p className={styles.error}>{bulkJob.errorMessage}</p> : null}
-                      </article>
-                    ))
-                  )}
-                </div>
-
-                {bulkErrorMessage ? <p className={styles.error}>{bulkErrorMessage}</p> : null}
-              </section>
+              <BulkGenerationPanel
+                bulkInput={bulkInput}
+                bulkJobs={bulkJobs}
+                errorMessage={bulkErrorMessage}
+                isBulkGenerating={isBulkGenerating}
+                onBulkFileUpload={handleBulkFileUpload}
+                onBulkInputChange={setBulkInput}
+                onGenerateBulk={handleGenerateBulk}
+                onRetryBulkJob={handleRetryBulkJob}
+                onRetryFailedBulkJobs={handleRetryFailedBulkJobs}
+              />
 
               <div className={styles.fieldRow}>
                 <div className={styles.fieldGroup}>
@@ -1520,374 +1191,52 @@ export default function CreateVideoPage() {
               {video?.errorMessage ? <p className={styles.error}>{video.errorMessage}</p> : null}
             </div>
 
-            <section className={styles.toolPanel} aria-labelledby="export-engine-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 27</p>
-                  <h3 className={styles.toolTitle} id="export-engine-title">
-                    Multi-format export
-                  </h3>
-                </div>
-                <button
-                  className={styles.secondaryButton}
-                  onClick={handleDownloadAllFormats}
-                  type="button"
-                >
-                  Download all
-                </button>
-              </div>
+            <ExportPanel
+              exportFormats={exportFormats}
+              onDownloadAllFormats={handleDownloadAllFormats}
+              onDownloadFormat={handleDownloadFormat}
+              onSelectExportFormat={setSelectedExportFormatId}
+              selectedExportFormat={selectedExportFormat}
+            />
 
-              <div className={styles.exportList}>
-                {exportFormats.map((format) => {
-                  const isActive = format.id === selectedExportFormat.id;
+            <PostingPreparationPanel
+              onCopyPostingField={handleCopyPostingField}
+              onRegeneratePostingPreparation={handleRegeneratePostingPreparation}
+              onUpdatePostingPreparation={handleUpdatePostingPreparation}
+              postingNotice={postingNotice}
+              postingPreparation={postingPreparation}
+            />
 
-                  return (
-                    <button
-                      aria-pressed={isActive}
-                      className={`${styles.exportOption} ${isActive ? styles.exportOptionActive : ''}`}
-                      key={format.id}
-                      onClick={() => setSelectedExportFormatId(format.id)}
-                      type="button"
-                    >
-                      <span className={styles.exportPlatform}>{format.label}</span>
-                      <span className={styles.exportMeta}>{format.canvas}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <HashtagGeneratorPanel
+              hashtagNotice={hashtagNotice}
+              hashtagSuggestions={hashtagSuggestions}
+              onCopyHashtags={handleCopyHashtags}
+              onRegenerateHashtags={handleRegenerateHashtags}
+              onUseHashtagsInPosting={handleUseHashtagsInPosting}
+            />
 
-              <div className={styles.exportPreviewShell}>
-                <div
-                  className={`${styles.exportPreviewFrame} ${getExportFrameClassName(selectedExportFormat.id, styles)}`}
-                >
-                  <div className={styles.exportPreviewOverlay}>
-                    <span className={styles.selectedHookLabel}>{selectedExportFormat.platform}</span>
-                    <strong>{selectedExportFormat.previewHeadline}</strong>
-                    <p className={styles.previewPrompt}>{selectedExportFormat.previewBody}</p>
-                    <span className={styles.metaBadge}>{selectedExportFormat.ctaLabel}</span>
-                  </div>
-                </div>
+            <TrendIdeasPanel trendIdeas={trendIdeas} />
 
-                <div className={styles.selectedHookCard}>
-                  <span className={styles.selectedHookLabel}>Layout behavior</span>
-                  <strong>{selectedExportFormat.layoutLabel}</strong>
-                </div>
+            <TemplateGalleryPanel onApplyTemplate={handleApplyTemplate} videoTemplates={videoTemplates} />
 
-                <button
-                  className={styles.secondaryButton}
-                  onClick={() => handleDownloadFormat(selectedExportFormat)}
-                  type="button"
-                >
-                  Download {selectedExportFormat.label}
-                </button>
-              </div>
-            </section>
+            <TeamModePanel
+              inviteEmail={inviteEmail}
+              inviteRole={inviteRole}
+              onInviteEmailChange={setInviteEmail}
+              onInviteMember={handleInviteMember}
+              onInviteRoleChange={setInviteRole}
+              teamMembers={teamMembers}
+              teamNotice={teamNotice}
+            />
 
-            <section className={styles.toolPanel} aria-labelledby="posting-prep-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 29</p>
-                  <h3 className={styles.toolTitle} id="posting-prep-title">
-                    Posting preparation
-                  </h3>
-                </div>
-                <button
-                  className={styles.secondaryButton}
-                  onClick={handleRegeneratePostingPreparation}
-                  type="button"
-                >
-                  Refresh content
-                </button>
-              </div>
-
-              <div className={styles.progressCard}>
-                <div className={styles.copyBar}>
-                  <label className={styles.label} htmlFor="postingTitle">
-                    Title
-                  </label>
-                  <button
-                    className={styles.ghostButton}
-                    onClick={() => handleCopyPostingField('Title', postingPreparation.title)}
-                    type="button"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <input
-                  id="postingTitle"
-                  className={styles.textInput}
-                  value={postingPreparation.title}
-                  onChange={(event) =>
-                    handleUpdatePostingPreparation('title', event.target.value)
-                  }
-                />
-              </div>
-
-              <div className={styles.progressCard}>
-                <div className={styles.copyBar}>
-                  <label className={styles.label} htmlFor="postingCaption">
-                    Caption
-                  </label>
-                  <button
-                    className={styles.ghostButton}
-                    onClick={() => handleCopyPostingField('Caption', postingPreparation.caption)}
-                    type="button"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <textarea
-                  id="postingCaption"
-                  className={styles.textarea}
-                  value={postingPreparation.caption}
-                  onChange={(event) =>
-                    handleUpdatePostingPreparation('caption', event.target.value)
-                  }
-                />
-              </div>
-
-              <div className={styles.progressCard}>
-                <div className={styles.copyBar}>
-                  <label className={styles.label} htmlFor="postingHashtags">
-                    Hashtags
-                  </label>
-                  <button
-                    className={styles.ghostButton}
-                    onClick={() => handleCopyPostingField('Hashtags', postingPreparation.hashtags)}
-                    type="button"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <textarea
-                  id="postingHashtags"
-                  className={styles.textarea}
-                  value={postingPreparation.hashtags}
-                  onChange={(event) =>
-                    handleUpdatePostingPreparation('hashtags', event.target.value)
-                  }
-                />
-              </div>
-
-              {postingNotice ? <p className={styles.toolHint}>{postingNotice}</p> : null}
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="hashtag-generator-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 30</p>
-                  <h3 className={styles.toolTitle} id="hashtag-generator-title">
-                    Hashtag generator
-                  </h3>
-                </div>
-                <div className={styles.progressActions}>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={handleRegenerateHashtags}
-                    type="button"
-                  >
-                    Regenerate
-                  </button>
-                  <button
-                    className={styles.ghostButton}
-                    onClick={handleCopyHashtags}
-                    type="button"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.progressCard}>
-                <span className={styles.selectedHookLabel}>Trending mix</span>
-                <div className={styles.tagList}>
-                  {hashtagSuggestions.trending.map((hashtag) => (
-                    <span className={styles.metaBadge} key={hashtag}>
-                      {hashtag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.progressCard}>
-                <span className={styles.selectedHookLabel}>Niche mix</span>
-                <div className={styles.tagList}>
-                  {hashtagSuggestions.niche.map((hashtag) => (
-                    <span className={styles.metaBadge} key={hashtag}>
-                      {hashtag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.progressCard}>
-                <span className={styles.selectedHookLabel}>Copy-ready set</span>
-                <p className={styles.previewPrompt}>{hashtagSuggestions.combined}</p>
-                <button
-                  className={styles.secondaryButton}
-                  onClick={handleUseHashtagsInPosting}
-                  type="button"
-                >
-                  Use in posting prep
-                </button>
-              </div>
-
-              {hashtagNotice ? <p className={styles.toolHint}>{hashtagNotice}</p> : null}
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="trend-engine-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 33</p>
-                  <h3 className={styles.toolTitle} id="trend-engine-title">
-                    Trending
-                  </h3>
-                </div>
-              </div>
-
-              <div className={styles.progressList}>
-                {trendIdeas.map((trendIdea) => (
-                  <article className={styles.progressCard} key={trendIdea.topic}>
-                    <strong>{trendIdea.topic}</strong>
-                    <p className={styles.previewPrompt}>{trendIdea.idea}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="template-system-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 34</p>
-                  <h3 className={styles.toolTitle} id="template-system-title">
-                    Template gallery
-                  </h3>
-                </div>
-              </div>
-
-              <div className={styles.progressList}>
-                {videoTemplates.map((template) => (
-                  <article className={styles.progressCard} key={template.id}>
-                    <strong>{template.name}</strong>
-                    <p className={styles.previewPrompt}>{template.preview}</p>
-                    <button
-                      className={styles.secondaryButton}
-                      onClick={() => handleApplyTemplate(template.prompt)}
-                      type="button"
-                    >
-                      Preview template
-                    </button>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="team-mode-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 35</p>
-                  <h3 className={styles.toolTitle} id="team-mode-title">
-                    Team mode
-                  </h3>
-                </div>
-              </div>
-
-              <div className={styles.fieldRow}>
-                <input
-                  className={styles.textInput}
-                  onChange={(event) => setInviteEmail(event.target.value)}
-                  placeholder="teammate@example.com"
-                  value={inviteEmail}
-                />
-                <select
-                  className={styles.select}
-                  onChange={(event) => setInviteRole(event.target.value as 'owner' | 'editor')}
-                  value={inviteRole}
-                >
-                  <option value="editor">Editor</option>
-                  <option value="owner">Owner</option>
-                </select>
-              </div>
-
-              <button className={styles.secondaryButton} onClick={handleInviteMember} type="button">
-                Invite member
-              </button>
-
-              <div className={styles.progressList}>
-                {teamMembers.map((teamMember) => (
-                  <article className={styles.progressCard} key={teamMember.id}>
-                    <strong>{teamMember.email}</strong>
-                    <span className={styles.metaBadge}>{teamMember.role}</span>
-                  </article>
-                ))}
-              </div>
-
-              {teamNotice ? <p className={styles.toolHint}>{teamNotice}</p> : null}
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="watermark-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 36</p>
-                  <h3 className={styles.toolTitle} id="watermark-title">
-                    Watermark
-                  </h3>
-                </div>
-              </div>
-
-              <div className={styles.segmentGroup}>
-                <button
-                  aria-pressed={watermarkType === 'text'}
-                  className={`${styles.segmentButton} ${watermarkType === 'text' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => setWatermarkType('text')}
-                  type="button"
-                >
-                  Text
-                </button>
-                <button
-                  aria-pressed={watermarkType === 'logo'}
-                  className={`${styles.segmentButton} ${watermarkType === 'logo' ? styles.segmentButtonActive : ''}`}
-                  onClick={() => setWatermarkType('logo')}
-                  type="button"
-                >
-                  Logo
-                </button>
-              </div>
-
-              <div className={styles.fieldRow}>
-                <input
-                  className={styles.textInput}
-                  onChange={(event) => setWatermarkText(event.target.value)}
-                  value={watermarkText}
-                />
-                <select
-                  className={styles.select}
-                  onChange={(event) =>
-                    setWatermarkPosition(
-                      event.target.value as
-                        | 'top-left'
-                        | 'top-right'
-                        | 'bottom-left'
-                        | 'bottom-right'
-                    )
-                  }
-                  value={watermarkPosition}
-                >
-                  <option value="top-left">Top left</option>
-                  <option value="top-right">Top right</option>
-                  <option value="bottom-left">Bottom left</option>
-                  <option value="bottom-right">Bottom right</option>
-                </select>
-              </div>
-
-              <div className={styles.watermarkPreview}>
-                <span
-                  className={`${styles.watermarkBadge} ${getWatermarkPositionClassName(watermarkPosition, styles)}`}
-                >
-                  {watermarkType === 'logo' ? 'Logo mark' : watermarkText}
-                </span>
-              </div>
-            </section>
+            <WatermarkPanel
+              onWatermarkPositionChange={setWatermarkPosition}
+              onWatermarkTextChange={setWatermarkText}
+              onWatermarkTypeChange={setWatermarkType}
+              watermarkPosition={watermarkPosition}
+              watermarkText={watermarkText}
+              watermarkType={watermarkType}
+            />
 
             <section className={styles.toolPanel} aria-labelledby="storage-cdn-title">
               <div className={styles.toolHeader}>
@@ -2006,59 +1355,15 @@ export default function CreateVideoPage() {
               {autoMachineNotice ? <p className={styles.toolHint}>{autoMachineNotice}</p> : null}
             </section>
 
-            <section className={styles.toolPanel} aria-labelledby="performance-ai-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 42</p>
-                  <h3 className={styles.toolTitle} id="performance-ai-title">
-                    Performance AI
-                  </h3>
-                </div>
-                <span className={styles.scoreBadge}>{performanceInsight.health}</span>
-              </div>
-
-              <div className={styles.fieldRow}>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="views">
-                    Views
-                  </label>
-                  <input
-                    id="views"
-                    className={styles.textInput}
-                    onChange={(event) => setViews(event.target.value)}
-                    value={views}
-                  />
-                </div>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="likes">
-                    Likes
-                  </label>
-                  <input
-                    id="likes"
-                    className={styles.textInput}
-                    onChange={(event) => setLikes(event.target.value)}
-                    value={likes}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.fieldGroup}>
-                <label className={styles.label} htmlFor="watchTime">
-                  Average watch time (seconds)
-                </label>
-                <input
-                  id="watchTime"
-                  className={styles.textInput}
-                  onChange={(event) => setWatchTime(event.target.value)}
-                  value={watchTime}
-                />
-              </div>
-
-              <div className={styles.progressCard}>
-                <strong>Suggestion</strong>
-                <p className={styles.previewPrompt}>{performanceInsight.suggestion}</p>
-              </div>
-            </section>
+            <PerformanceAiPanel
+              likes={likes}
+              onLikesChange={setLikes}
+              onViewsChange={setViews}
+              onWatchTimeChange={setWatchTime}
+              performanceInsight={performanceInsight}
+              views={views}
+              watchTime={watchTime}
+            />
 
             <div className={styles.noteGrid}>
               {workflowNotes.map((note) => (
@@ -2072,186 +1377,4 @@ export default function CreateVideoPage() {
       </div>
     </main>
   );
-}
-
-function toPriceTierLabel(priceTier: ProviderDefinition['priceTier']): string {
-  return priceTier.charAt(0).toUpperCase() + priceTier.slice(1);
-}
-
-function createExportBrief(input: {
-  readonly format: ExportFormatDefinition;
-  readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
-}): string {
-  const sections = [
-    `Format: ${input.format.label}`,
-    `Canvas: ${input.format.canvas}`,
-    `Layout: ${input.format.layoutLabel}`,
-    `Hook: ${input.selectedHookText ?? 'Not selected'}`,
-    `CTA: ${input.ctaText?.trim() || 'Not set'}`,
-    `Prompt: ${input.prompt.trim() || 'Not set'}`,
-  ];
-
-  return sections.join('\n');
-}
-
-function downloadTextFile(input: { readonly content: string; readonly fileName: string }): void {
-  const blob = new Blob([input.content], { type: 'text/plain;charset=utf-8' });
-  const objectUrl = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-
-  anchor.href = objectUrl;
-  anchor.download = input.fileName;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => {
-    window.URL.revokeObjectURL(objectUrl);
-  }, 0);
-}
-
-function getExportFrameClassName(
-  exportFormatId: ExportFormatId,
-  classNames: Record<string, string>
-): string {
-  if (exportFormatId === 'instagram-1x1') {
-    return classNames.exportPreviewSquare;
-  }
-
-  if (exportFormatId === 'instagram-4x5') {
-    return classNames.exportPreviewPortrait;
-  }
-
-  return classNames.exportPreviewTall;
-}
-
-function getWatermarkPositionClassName(
-  watermarkPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right',
-  classNames: Record<string, string>
-): string {
-  if (watermarkPosition === 'top-left') {
-    return classNames.watermarkTopLeft;
-  }
-
-  if (watermarkPosition === 'top-right') {
-    return classNames.watermarkTopRight;
-  }
-
-  if (watermarkPosition === 'bottom-left') {
-    return classNames.watermarkBottomLeft;
-  }
-
-  return classNames.watermarkBottomRight;
-}
-
-function toBulkJobStatus(videoStatus: string): BulkJobStatus {
-  if (videoStatus === 'completed') {
-    return 'completed';
-  }
-
-  if (videoStatus === 'failed') {
-    return 'failed';
-  }
-
-  if (videoStatus === 'processing') {
-    return 'processing';
-  }
-
-  return 'queued';
-}
-
-async function refreshCurrentUser(
-  setCurrentUser: Dispatch<SetStateAction<CurrentUser | null>>
-): Promise<void> {
-  const response = await fetch('/api/auth/session', {
-    cache: 'no-store',
-  });
-  const payload = (await response.json()) as ApiEnvelope<CurrentUser>;
-
-  if (response.ok && payload.success && payload.data) {
-    setCurrentUser(payload.data);
-  }
-}
-
-async function submitVideoRequest(input: {
-  readonly promptToSend: string;
-  readonly router: {
-    push: (href: string) => void;
-    refresh: () => void;
-  };
-  readonly provider: string;
-  readonly aspectRatio: string;
-  readonly setVideo: Dispatch<SetStateAction<VideoResponse | null>>;
-  readonly setCurrentUser: Dispatch<SetStateAction<CurrentUser | null>>;
-  readonly setErrorMessage: Dispatch<SetStateAction<string | null>>;
-}): Promise<void> {
-  const response = await fetch('/api/video', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt: input.promptToSend,
-      provider: input.provider,
-      aspectRatio: input.aspectRatio,
-    }),
-  });
-  const payload = (await response.json()) as ApiEnvelope<GenerateVideoResponse>;
-
-  if (response.status === 401) {
-    input.router.push('/login');
-    input.router.refresh();
-    return;
-  }
-
-  if (!response.ok || !payload.success || !payload.data) {
-    input.setErrorMessage(payload.error ?? 'Failed to generate video.');
-    return;
-  }
-
-  input.setVideo(payload.data.video);
-  input.setCurrentUser((previousUser) => {
-    if (!previousUser || !payload.data) {
-      return previousUser;
-    }
-
-    return {
-      ...previousUser,
-      credits: payload.data.remainingCredits,
-    };
-  });
-}
-
-function createPerformanceInsight(input: {
-  readonly views: string;
-  readonly likes: string;
-  readonly watchTime: string;
-}): {
-  readonly health: string;
-  readonly suggestion: string;
-} {
-  const viewCount = Number(input.views) || 0;
-  const likeCount = Number(input.likes) || 0;
-  const averageWatchTime = Number(input.watchTime) || 0;
-  const engagementRate = viewCount > 0 ? (likeCount / viewCount) * 100 : 0;
-
-  if (engagementRate >= 6 && averageWatchTime >= 15) {
-    return {
-      health: 'Strong',
-      suggestion: 'Keep the hook structure and test a stronger CTA to squeeze more conversion from healthy retention.',
-    };
-  }
-
-  if (engagementRate >= 3) {
-    return {
-      health: 'Stable',
-      suggestion: 'Tighten the opening three seconds and push more emotional contrast before the offer lands.',
-    };
-  }
-
-  return {
-    health: 'Needs work',
-    suggestion: 'Rebuild the hook, shorten the setup, and add faster payoff so watch time lifts earlier in the cut.',
-  };
 }

@@ -1,22 +1,14 @@
 'use client';
 
+import type { ApiResponse, AuthSession } from '@reevio/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import styles from './auth-form.module.css';
 
-interface ApiEnvelope<TData> {
-  readonly success: boolean;
-  readonly data: TData | null;
-  readonly error: string | null;
-}
-
-interface BrowserAuthSession {
-  readonly user: {
-    readonly email: string;
-  };
-  readonly expiresAt: string;
-}
+type BrowserAuthSession = Pick<AuthSession, 'expiresAt'> & {
+  readonly user: Pick<AuthSession['user'], 'email'>;
+};
 
 interface AuthFormProps {
   readonly mode: 'login' | 'register';
@@ -54,7 +46,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           password,
         }),
       });
-      const payload = (await response.json()) as ApiEnvelope<BrowserAuthSession>;
+      const payload = (await response.json()) as ApiResponse<BrowserAuthSession>;
 
       if (!response.ok || !payload.success) {
         setErrorMessage(payload.error ?? 'Authentication failed.');
