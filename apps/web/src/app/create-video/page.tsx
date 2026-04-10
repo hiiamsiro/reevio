@@ -220,6 +220,9 @@ export default function CreateVideoPage() {
   const videoTemplates = createVideoTemplates();
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
+  const storageUrl =
+    video?.outputUrl ??
+    `https://cdn.reevio.app/secure/${provider}/${aspectRatio.replace(':', 'x')}/preview.mp4`;
   const hasEnoughCredits =
     currentUser !== null && selectedProvider !== null
       ? currentUser.credits >= selectedProvider.creditCost
@@ -879,6 +882,22 @@ export default function CreateVideoPage() {
     setInviteEmail('');
     setInviteRole('editor');
     setTeamNotice(`Invite prepared for ${normalizedEmail}.`);
+  };
+
+  const handleCopyStorageUrl = (): void => {
+    if (!navigator.clipboard) {
+      setErrorMessage('Clipboard is unavailable in this browser. Copy manually.');
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(storageUrl)
+      .then(() => {
+        setErrorMessage(null);
+      })
+      .catch(() => {
+        setErrorMessage('Failed to copy the delivery URL.');
+      });
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -1807,6 +1826,34 @@ export default function CreateVideoPage() {
                 >
                   {watermarkType === 'logo' ? 'Logo mark' : watermarkText}
                 </span>
+              </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="storage-cdn-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 37</p>
+                  <h3 className={styles.toolTitle} id="storage-cdn-title">
+                    Storage + CDN
+                  </h3>
+                </div>
+                <button
+                  className={styles.ghostButton}
+                  onClick={handleCopyStorageUrl}
+                  type="button"
+                >
+                  Copy URL
+                </button>
+              </div>
+
+              <div className={styles.progressCard}>
+                <strong>Delivery URL</strong>
+                <p className={styles.previewPrompt}>{storageUrl}</p>
+                <div className={styles.tagList}>
+                  <span className={styles.metaBadge}>Fast load</span>
+                  <span className={styles.metaBadge}>Secure access</span>
+                  <span className={styles.metaBadge}>CDN edge ready</span>
+                </div>
               </div>
             </section>
 
