@@ -61,6 +61,12 @@ export interface ViralScoreAnalysis {
   readonly length: number;
 }
 
+export interface RewriteVariationInput {
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -160,6 +166,21 @@ export function createViralScoreAnalysis(input: {
     emotion: emotionScore,
     length: lengthScore,
   };
+}
+
+export function createRewriteVariations(input: RewriteVariationInput): string[] {
+  const normalizedPrompt = input.prompt.trim();
+  const basePrompt = normalizedPrompt.length > 0 ? normalizedPrompt : 'Create a conversion-focused product video.';
+  const hookLine = input.selectedHookText?.trim()
+    ? `Lead with ${input.selectedHookText.trim().toLowerCase()}`
+    : 'Lead with a fast curiosity hook';
+  const ctaLine = input.ctaText?.trim() || 'End with a strong CTA.';
+
+  return [
+    `${hookLine}. ${basePrompt} ${ctaLine}`,
+    `Open with social proof and a surprising reveal. ${basePrompt} ${ctaLine}`,
+    `Turn the prompt into a cleaner UGC angle with direct payoff. ${basePrompt} ${ctaLine}`,
+  ];
 }
 
 const HOOK_COUNT = 10;

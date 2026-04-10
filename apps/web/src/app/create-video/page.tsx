@@ -11,6 +11,7 @@ import {
   createCtaText,
   createHookOptions,
   createPostingPreparation,
+  createRewriteVariations,
   createViralScoreAnalysis,
   parseBulkProductList,
   toCtaTypeLabel,
@@ -157,6 +158,7 @@ export default function CreateVideoPage() {
     })
   );
   const [hashtagNotice, setHashtagNotice] = useState<string | null>(null);
+  const [selectedRewriteIndex, setSelectedRewriteIndex] = useState(0);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -187,6 +189,12 @@ export default function CreateVideoPage() {
     selectedHookText: selectedHook?.text ?? null,
     ctaText,
   });
+  const rewriteVariations = createRewriteVariations({
+    prompt,
+    selectedHookText: selectedHook?.text ?? null,
+    ctaText,
+  });
+  const activeRewriteVariation = rewriteVariations[selectedRewriteIndex] ?? rewriteVariations[0];
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -820,6 +828,10 @@ export default function CreateVideoPage() {
     setHashtagNotice('Hashtag set moved into posting preparation.');
   };
 
+  const handleApplyRewriteVariation = (): void => {
+    setPrompt(activeRewriteVariation);
+  };
+
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
 
   return (
@@ -1263,6 +1275,46 @@ export default function CreateVideoPage() {
                   </div>
                 </div>
               </div>
+
+              <section className={styles.toolPanel} aria-labelledby="rewrite-engine-title">
+                <div className={styles.toolHeader}>
+                  <div>
+                    <p className={styles.sectionEyebrow}>Phase 32</p>
+                    <h3 className={styles.toolTitle} id="rewrite-engine-title">
+                      Rewrite engine
+                    </h3>
+                  </div>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={handleApplyRewriteVariation}
+                    type="button"
+                  >
+                    Use selected version
+                  </button>
+                </div>
+
+                <div className={styles.segmentGroup}>
+                  {rewriteVariations.map((variation, index) => {
+                    const isActive = index === selectedRewriteIndex;
+
+                    return (
+                      <button
+                        aria-pressed={isActive}
+                        className={`${styles.segmentButton} ${isActive ? styles.segmentButtonActive : ''}`}
+                        key={variation}
+                        onClick={() => setSelectedRewriteIndex(index)}
+                        type="button"
+                      >
+                        V{index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className={styles.progressCard}>
+                  <p className={styles.previewPrompt}>{activeRewriteVariation}</p>
+                </div>
+              </section>
 
               <button
                 className={styles.submit}
