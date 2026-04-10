@@ -81,6 +81,12 @@ interface BulkJobItem {
   readonly errorMessage: string | null;
 }
 
+interface TeamMember {
+  readonly id: string;
+  readonly email: string;
+  readonly role: 'owner' | 'editor';
+}
+
 const promptPresets = [
   'Create a vertical sneaker launch ad with chrome lighting, fast macro cuts, and a final 15% off CTA.',
   'Generate a skincare promo with soft glass textures, ingredient callouts, and calm premium narration.',
@@ -161,6 +167,16 @@ export default function CreateVideoPage() {
   );
   const [hashtagNotice, setHashtagNotice] = useState<string | null>(null);
   const [selectedRewriteIndex, setSelectedRewriteIndex] = useState(0);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'owner' | 'editor'>('editor');
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    {
+      id: 'team-owner',
+      email: 'owner@reevio.app',
+      role: 'owner',
+    },
+  ]);
+  const [teamNotice, setTeamNotice] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -839,6 +855,27 @@ export default function CreateVideoPage() {
   const handleApplyTemplate = (templatePrompt: string): void => {
     setPrompt(templatePrompt);
     setHookSource(templatePrompt);
+  };
+
+  const handleInviteMember = (): void => {
+    const normalizedEmail = inviteEmail.trim();
+
+    if (normalizedEmail.length === 0) {
+      setTeamNotice('Enter an email before sending an invite.');
+      return;
+    }
+
+    setTeamMembers((previousMembers) => [
+      ...previousMembers,
+      {
+        id: `team-${previousMembers.length + 1}`,
+        email: normalizedEmail,
+        role: inviteRole,
+      },
+    ]);
+    setInviteEmail('');
+    setInviteRole('editor');
+    setTeamNotice(`Invite prepared for ${normalizedEmail}.`);
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -1661,6 +1698,49 @@ export default function CreateVideoPage() {
                   </article>
                 ))}
               </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="team-mode-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 35</p>
+                  <h3 className={styles.toolTitle} id="team-mode-title">
+                    Team mode
+                  </h3>
+                </div>
+              </div>
+
+              <div className={styles.fieldRow}>
+                <input
+                  className={styles.textInput}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="teammate@example.com"
+                  value={inviteEmail}
+                />
+                <select
+                  className={styles.select}
+                  onChange={(event) => setInviteRole(event.target.value as 'owner' | 'editor')}
+                  value={inviteRole}
+                >
+                  <option value="editor">Editor</option>
+                  <option value="owner">Owner</option>
+                </select>
+              </div>
+
+              <button className={styles.secondaryButton} onClick={handleInviteMember} type="button">
+                Invite member
+              </button>
+
+              <div className={styles.progressList}>
+                {teamMembers.map((teamMember) => (
+                  <article className={styles.progressCard} key={teamMember.id}>
+                    <strong>{teamMember.email}</strong>
+                    <span className={styles.metaBadge}>{teamMember.role}</span>
+                  </article>
+                ))}
+              </div>
+
+              {teamNotice ? <p className={styles.toolHint}>{teamNotice}</p> : null}
             </section>
 
             <div className={styles.noteGrid}>
