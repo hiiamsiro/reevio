@@ -67,6 +67,11 @@ export interface RewriteVariationInput {
   readonly ctaText: string | null;
 }
 
+export interface TrendIdea {
+  readonly topic: string;
+  readonly idea: string;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -180,6 +185,25 @@ export function createRewriteVariations(input: RewriteVariationInput): string[] 
     `${hookLine}. ${basePrompt} ${ctaLine}`,
     `Open with social proof and a surprising reveal. ${basePrompt} ${ctaLine}`,
     `Turn the prompt into a cleaner UGC angle with direct payoff. ${basePrompt} ${ctaLine}`,
+  ];
+}
+
+export function createTrendIdeas(prompt: string): TrendIdea[] {
+  const productFocus = getProductFocus(normalizeProductDescription(prompt));
+
+  return [
+    {
+      topic: 'Creator proof cuts',
+      idea: `Show ${productFocus} through fast creator reactions and comment overlays.`,
+    },
+    {
+      topic: 'Price reveal loops',
+      idea: `Build a short payoff around the before/after value of ${productFocus}.`,
+    },
+    {
+      topic: 'Expectation flips',
+      idea: `Use a fake-out opening, then reveal why ${productFocus} feels different.`,
+    },
   ];
 }
 

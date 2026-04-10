@@ -12,6 +12,7 @@ import {
   createHookOptions,
   createPostingPreparation,
   createRewriteVariations,
+  createTrendIdeas,
   createViralScoreAnalysis,
   parseBulkProductList,
   toCtaTypeLabel,
@@ -195,6 +196,7 @@ export default function CreateVideoPage() {
     ctaText,
   });
   const activeRewriteVariation = rewriteVariations[selectedRewriteIndex] ?? rewriteVariations[0];
+  const trendIdeas = createTrendIdeas(prompt);
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -1605,6 +1607,26 @@ export default function CreateVideoPage() {
               </div>
 
               {hashtagNotice ? <p className={styles.toolHint}>{hashtagNotice}</p> : null}
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="trend-engine-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 33</p>
+                  <h3 className={styles.toolTitle} id="trend-engine-title">
+                    Trending
+                  </h3>
+                </div>
+              </div>
+
+              <div className={styles.progressList}>
+                {trendIdeas.map((trendIdea) => (
+                  <article className={styles.progressCard} key={trendIdea.topic}>
+                    <strong>{trendIdea.topic}</strong>
+                    <p className={styles.previewPrompt}>{trendIdea.idea}</p>
+                  </article>
+                ))}
+              </div>
             </section>
 
             <div className={styles.noteGrid}>
