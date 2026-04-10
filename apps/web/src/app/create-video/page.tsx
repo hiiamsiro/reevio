@@ -787,6 +787,14 @@ export default function CreateVideoPage() {
     }
   };
 
+  const handleRetryFailedBulkJobs = (): void => {
+    const failedBulkJobs = bulkJobs.filter((bulkJob) => bulkJob.status === 'failed');
+
+    failedBulkJobs.forEach((bulkJob) => {
+      void handleRetryBulkJob(bulkJob.id);
+    });
+  };
+
   const handleRegeneratePostingPreparation = (): void => {
     setPostingPreparation(
       createPostingPreparation({
@@ -1175,14 +1183,23 @@ export default function CreateVideoPage() {
                       Bulk generation
                     </h3>
                   </div>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={() => void handleGenerateBulk()}
-                    disabled={isBulkGenerating}
-                    type="button"
-                  >
-                    {isBulkGenerating ? 'Generating...' : 'Generate all'}
-                  </button>
+                  <div className={styles.progressActions}>
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={() => void handleGenerateBulk()}
+                      disabled={isBulkGenerating}
+                      type="button"
+                    >
+                      {isBulkGenerating ? 'Generating...' : 'Generate all'}
+                    </button>
+                    <button
+                      className={styles.ghostButton}
+                      onClick={handleRetryFailedBulkJobs}
+                      type="button"
+                    >
+                      Retry failed only
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.fieldGroup}>
@@ -1203,6 +1220,8 @@ export default function CreateVideoPage() {
                   onChange={(event) => void handleBulkFileUpload(event)}
                   type="file"
                 />
+
+                <p className={styles.toolHint}>Phase 39: retry failed steps only from the current bulk run.</p>
 
                 <div className={styles.progressList}>
                   {bulkJobs.length === 0 ? (
