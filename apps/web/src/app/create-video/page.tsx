@@ -11,6 +11,7 @@ import {
   createCtaText,
   createHookOptions,
   createPostingPreparation,
+  createViralScoreAnalysis,
   parseBulkProductList,
   toCtaTypeLabel,
   type CtaType,
@@ -19,6 +20,7 @@ import {
   type HashtagSuggestionSet,
   type HookOption,
   type PostingPreparation,
+  type ViralScoreAnalysis,
 } from './content-studio';
 import styles from './page.module.css';
 
@@ -180,6 +182,11 @@ export default function CreateVideoPage() {
   });
   const selectedExportFormat =
     exportFormats.find((format) => format.id === selectedExportFormatId) ?? exportFormats[0];
+  const viralScoreAnalysis: ViralScoreAnalysis = createViralScoreAnalysis({
+    prompt,
+    selectedHookText: selectedHook?.text ?? null,
+    ctaText,
+  });
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -1229,6 +1236,33 @@ export default function CreateVideoPage() {
                   </p>
                 </div>
               ) : null}
+
+              <div className={styles.toolPanel} aria-labelledby="viral-score-title">
+                <div className={styles.toolHeader}>
+                  <div>
+                    <p className={styles.sectionEyebrow}>Phase 31</p>
+                    <h3 className={styles.toolTitle} id="viral-score-title">
+                      Viral score
+                    </h3>
+                  </div>
+                  <span className={styles.scoreBadge}>{viralScoreAnalysis.score}/100</span>
+                </div>
+
+                <div className={styles.scoreGrid}>
+                  <div className={styles.heroMetric}>
+                    <span>Hook</span>
+                    <strong>{viralScoreAnalysis.hook}</strong>
+                  </div>
+                  <div className={styles.heroMetric}>
+                    <span>Emotion</span>
+                    <strong>{viralScoreAnalysis.emotion}</strong>
+                  </div>
+                  <div className={styles.heroMetric}>
+                    <span>Length</span>
+                    <strong>{viralScoreAnalysis.length}</strong>
+                  </div>
+                </div>
+              </div>
 
               <button
                 className={styles.submit}

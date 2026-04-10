@@ -54,6 +54,13 @@ export interface HashtagSuggestionSet {
   readonly combined: string;
 }
 
+export interface ViralScoreAnalysis {
+  readonly score: number;
+  readonly hook: number;
+  readonly emotion: number;
+  readonly length: number;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -133,6 +140,25 @@ export function createHashtagSuggestionSet(input: {
     trending,
     niche,
     combined: [...trending, ...niche].join(' '),
+  };
+}
+
+export function createViralScoreAnalysis(input: {
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}): ViralScoreAnalysis {
+  const promptText = input.prompt.trim();
+  const hookScore = input.selectedHookText?.trim() ? 35 : 18;
+  const emotionScore = hasEmotionSignal(promptText, input.ctaText) ? 33 : 20;
+  const lengthScore = getLengthScore(promptText);
+  const score = Math.min(100, hookScore + emotionScore + lengthScore);
+
+  return {
+    score,
+    hook: hookScore,
+    emotion: emotionScore,
+    length: lengthScore,
   };
 }
 
@@ -363,4 +389,29 @@ function rotateList(values: readonly string[], seed: number): string[] {
   const safeSeed = seed % values.length;
 
   return [...values.slice(safeSeed), ...values.slice(0, safeSeed)];
+}
+
+function hasEmotionSignal(prompt: string, ctaText: string | null): boolean {
+  const combinedText = `${prompt} ${ctaText ?? ''}`.toLowerCase();
+  const emotionalKeywords = ['wow', 'love', 'feel', 'obsession', 'secret', 'wait', 'must', 'fast'];
+
+  return emotionalKeywords.some((keyword) => combinedText.includes(keyword));
+}
+
+function getLengthScore(prompt: string): number {
+  const promptLength = prompt.trim().length;
+
+  if (promptLength >= 40 && promptLength <= 180) {
+    return 32;
+  }
+
+  if (promptLength >= 20 && promptLength < 40) {
+    return 24;
+  }
+
+  if (promptLength > 180 && promptLength <= 260) {
+    return 22;
+  }
+
+  return 14;
 }

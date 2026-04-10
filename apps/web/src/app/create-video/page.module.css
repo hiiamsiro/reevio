@@ -513,6 +513,21 @@
   flex-wrap: wrap;
 }
 
+.scoreBadge {
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 140, 107, 0.32);
+  color: var(--color-text-primary);
+  background: rgba(255, 140, 107, 0.14);
+  font-weight: 700;
+}
+
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
 .fileInput {
   width: 100%;
   min-height: 44px;
@@ -822,7 +837,8 @@
   .heroPanel,
   .fieldRow,
   .statusGrid,
-  .hookGrid {
+  .hookGrid,
+  .scoreGrid {
     grid-template-columns: 1fr;
   }
 
