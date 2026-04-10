@@ -72,6 +72,13 @@ export interface TrendIdea {
   readonly idea: string;
 }
 
+export interface VideoTemplateDefinition {
+  readonly id: string;
+  readonly name: string;
+  readonly preview: string;
+  readonly prompt: string;
+}
+
 export function createBulkVideoPrompt(productDescription: string): string {
   const normalizedDescription = normalizeProductDescription(productDescription);
 
@@ -203,6 +210,29 @@ export function createTrendIdeas(prompt: string): TrendIdea[] {
     {
       topic: 'Expectation flips',
       idea: `Use a fake-out opening, then reveal why ${productFocus} feels different.`,
+    },
+  ];
+}
+
+export function createVideoTemplates(): VideoTemplateDefinition[] {
+  return [
+    {
+      id: 'ugc-proof',
+      name: 'UGC Proof Stack',
+      preview: 'Fast creator hook, testimonial beat, offer close.',
+      prompt: 'Create a creator-led proof video with a fast hook, testimonial proof, and a strong CTA.',
+    },
+    {
+      id: 'premium-reveal',
+      name: 'Premium Reveal',
+      preview: 'Luxury pacing, close-up product reveal, clean end card.',
+      prompt: 'Create a premium reveal video with slow product shots, sensory copy, and a polished CTA.',
+    },
+    {
+      id: 'feature-flip',
+      name: 'Feature Flip',
+      preview: 'Open on pain point, show product shift, land the payoff.',
+      prompt: 'Create a feature-first video that opens on frustration, flips to solution, and closes on value.',
     },
   ];
 }

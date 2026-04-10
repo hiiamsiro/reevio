@@ -13,6 +13,7 @@ import {
   createPostingPreparation,
   createRewriteVariations,
   createTrendIdeas,
+  createVideoTemplates,
   createViralScoreAnalysis,
   parseBulkProductList,
   toCtaTypeLabel,
@@ -197,6 +198,7 @@ export default function CreateVideoPage() {
   });
   const activeRewriteVariation = rewriteVariations[selectedRewriteIndex] ?? rewriteVariations[0];
   const trendIdeas = createTrendIdeas(prompt);
+  const videoTemplates = createVideoTemplates();
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -832,6 +834,11 @@ export default function CreateVideoPage() {
 
   const handleApplyRewriteVariation = (): void => {
     setPrompt(activeRewriteVariation);
+  };
+
+  const handleApplyTemplate = (templatePrompt: string): void => {
+    setPrompt(templatePrompt);
+    setHookSource(templatePrompt);
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -1624,6 +1631,33 @@ export default function CreateVideoPage() {
                   <article className={styles.progressCard} key={trendIdea.topic}>
                     <strong>{trendIdea.topic}</strong>
                     <p className={styles.previewPrompt}>{trendIdea.idea}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="template-system-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 34</p>
+                  <h3 className={styles.toolTitle} id="template-system-title">
+                    Template gallery
+                  </h3>
+                </div>
+              </div>
+
+              <div className={styles.progressList}>
+                {videoTemplates.map((template) => (
+                  <article className={styles.progressCard} key={template.id}>
+                    <strong>{template.name}</strong>
+                    <p className={styles.previewPrompt}>{template.preview}</p>
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={() => handleApplyTemplate(template.prompt)}
+                      type="button"
+                    >
+                      Preview template
+                    </button>
                   </article>
                 ))}
               </div>
