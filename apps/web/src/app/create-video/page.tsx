@@ -5,10 +5,13 @@ import Link from 'next/link';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
 import {
   buildPromptWithCreativeDirectives,
+  createExportFormats,
   createCtaText,
   createHookOptions,
   toCtaTypeLabel,
   type CtaType,
+  type ExportFormatDefinition,
+  type ExportFormatId,
   type HookOption,
 } from './content-studio';
 import styles from './page.module.css';
@@ -107,6 +110,8 @@ export default function CreateVideoPage() {
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [video, setVideo] = useState<VideoResponse | null>(null);
+  const [selectedExportFormatId, setSelectedExportFormatId] =
+    useState<ExportFormatId>('tiktok-9x16');
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -125,6 +130,13 @@ export default function CreateVideoPage() {
       selectedHookText: selectedHook?.text ?? null,
       ctaText,
     });
+  const exportFormats = createExportFormats({
+    prompt,
+    selectedHookText: selectedHook?.text ?? null,
+    ctaText,
+  });
+  const selectedExportFormat =
+    exportFormats.find((format) => format.id === selectedExportFormatId) ?? exportFormats[0];
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -393,6 +405,38 @@ export default function CreateVideoPage() {
         type,
       })
     );
+  };
+
+  const handleDownloadFormat = (format: ExportFormatDefinition): void => {
+    const fileContent = createExportBrief({
+      format,
+      prompt,
+      selectedHookText: selectedHook?.text ?? null,
+      ctaText,
+    });
+
+    downloadTextFile({
+      content: fileContent,
+      fileName: `${format.id}-export-brief.txt`,
+    });
+  };
+
+  const handleDownloadAllFormats = (): void => {
+    const fileContent = exportFormats
+      .map((format) =>
+        createExportBrief({
+          format,
+          prompt,
+          selectedHookText: selectedHook?.text ?? null,
+          ctaText,
+        })
+      )
+      .join('\n\n------------------------------\n\n');
+
+    downloadTextFile({
+      content: fileContent,
+      fileName: 'multi-format-export-brief.txt',
+    });
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -808,6 +852,69 @@ export default function CreateVideoPage() {
               {video?.errorMessage ? <p className={styles.error}>{video.errorMessage}</p> : null}
             </div>
 
+            <section className={styles.toolPanel} aria-labelledby="export-engine-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 27</p>
+                  <h3 className={styles.toolTitle} id="export-engine-title">
+                    Multi-format export
+                  </h3>
+                </div>
+                <button
+                  className={styles.secondaryButton}
+                  onClick={handleDownloadAllFormats}
+                  type="button"
+                >
+                  Download all
+                </button>
+              </div>
+
+              <div className={styles.exportList}>
+                {exportFormats.map((format) => {
+                  const isActive = format.id === selectedExportFormat.id;
+
+                  return (
+                    <button
+                      aria-pressed={isActive}
+                      className={`${styles.exportOption} ${isActive ? styles.exportOptionActive : ''}`}
+                      key={format.id}
+                      onClick={() => setSelectedExportFormatId(format.id)}
+                      type="button"
+                    >
+                      <span className={styles.exportPlatform}>{format.label}</span>
+                      <span className={styles.exportMeta}>{format.canvas}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={styles.exportPreviewShell}>
+                <div
+                  className={`${styles.exportPreviewFrame} ${getExportFrameClassName(selectedExportFormat.id, styles)}`}
+                >
+                  <div className={styles.exportPreviewOverlay}>
+                    <span className={styles.selectedHookLabel}>{selectedExportFormat.platform}</span>
+                    <strong>{selectedExportFormat.previewHeadline}</strong>
+                    <p className={styles.previewPrompt}>{selectedExportFormat.previewBody}</p>
+                    <span className={styles.metaBadge}>{selectedExportFormat.ctaLabel}</span>
+                  </div>
+                </div>
+
+                <div className={styles.selectedHookCard}>
+                  <span className={styles.selectedHookLabel}>Layout behavior</span>
+                  <strong>{selectedExportFormat.layoutLabel}</strong>
+                </div>
+
+                <button
+                  className={styles.secondaryButton}
+                  onClick={() => handleDownloadFormat(selectedExportFormat)}
+                  type="button"
+                >
+                  Download {selectedExportFormat.label}
+                </button>
+              </div>
+            </section>
+
             <div className={styles.noteGrid}>
               {workflowNotes.map((note) => (
                 <div className={styles.noteCard} key={note}>
@@ -824,4 +931,52 @@ export default function CreateVideoPage() {
 
 function toPriceTierLabel(priceTier: ProviderDefinition['priceTier']): string {
   return priceTier.charAt(0).toUpperCase() + priceTier.slice(1);
+}
+
+function createExportBrief(input: {
+  readonly format: ExportFormatDefinition;
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}): string {
+  const sections = [
+    `Format: ${input.format.label}`,
+    `Canvas: ${input.format.canvas}`,
+    `Layout: ${input.format.layoutLabel}`,
+    `Hook: ${input.selectedHookText ?? 'Not selected'}`,
+    `CTA: ${input.ctaText?.trim() || 'Not set'}`,
+    `Prompt: ${input.prompt.trim() || 'Not set'}`,
+  ];
+
+  return sections.join('\n');
+}
+
+function downloadTextFile(input: { readonly content: string; readonly fileName: string }): void {
+  const blob = new Blob([input.content], { type: 'text/plain;charset=utf-8' });
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+
+  anchor.href = objectUrl;
+  anchor.download = input.fileName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(objectUrl);
+  }, 0);
+}
+
+function getExportFrameClassName(
+  exportFormatId: ExportFormatId,
+  classNames: Record<string, string>
+): string {
+  if (exportFormatId === 'instagram-1x1') {
+    return classNames.exportPreviewSquare;
+  }
+
+  if (exportFormatId === 'instagram-4x5') {
+    return classNames.exportPreviewPortrait;
+  }
+
+  return classNames.exportPreviewTall;
 }

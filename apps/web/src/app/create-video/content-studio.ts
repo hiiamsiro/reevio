@@ -4,6 +4,7 @@ export interface HookGeneratorInput {
 }
 
 export type CtaType = 'urgency' | 'scarcity' | 'discount';
+export type ExportFormatId = 'tiktok-9x16' | 'instagram-1x1' | 'instagram-4x5';
 
 export interface HookOption {
   readonly id: string;
@@ -15,6 +16,24 @@ export interface CtaGeneratorInput {
   readonly productDescription: string;
   readonly seed: number;
   readonly type: CtaType;
+}
+
+export interface ExportFormatInput {
+  readonly prompt: string;
+  readonly selectedHookText: string | null;
+  readonly ctaText: string | null;
+}
+
+export interface ExportFormatDefinition {
+  readonly id: ExportFormatId;
+  readonly platform: string;
+  readonly label: string;
+  readonly aspectRatio: '9:16' | '1:1' | '4:5';
+  readonly canvas: string;
+  readonly layoutLabel: string;
+  readonly previewHeadline: string;
+  readonly previewBody: string;
+  readonly ctaLabel: string;
 }
 
 const HOOK_COUNT = 10;
@@ -100,6 +119,48 @@ export function toCtaTypeLabel(type: CtaType): string {
   return capitalizeHookText(type);
 }
 
+export function createExportFormats(input: ExportFormatInput): ExportFormatDefinition[] {
+  const previewHeadline = getPreviewHeadline(input);
+  const previewBody = getPreviewBody(input.prompt);
+  const ctaLabel = input.ctaText?.trim() || 'Add CTA before export';
+
+  return [
+    {
+      id: 'tiktok-9x16',
+      platform: 'TikTok',
+      label: 'TikTok 9:16',
+      aspectRatio: '9:16',
+      canvas: '1080 x 1920',
+      layoutLabel: 'Tall layout with stacked headline, center-safe product framing, and bottom CTA.',
+      previewHeadline,
+      previewBody,
+      ctaLabel,
+    },
+    {
+      id: 'instagram-1x1',
+      platform: 'Instagram',
+      label: 'Instagram 1:1',
+      aspectRatio: '1:1',
+      canvas: '1080 x 1080',
+      layoutLabel: 'Balanced square layout with centered focal subject and tighter caption density.',
+      previewHeadline,
+      previewBody,
+      ctaLabel,
+    },
+    {
+      id: 'instagram-4x5',
+      platform: 'Instagram',
+      label: 'Instagram 4:5',
+      aspectRatio: '4:5',
+      canvas: '1080 x 1350',
+      layoutLabel: 'Feed-optimized portrait layout with larger product crop and CTA-safe lower third.',
+      previewHeadline,
+      previewBody,
+      ctaLabel,
+    },
+  ];
+}
+
 function getCtaTemplates(type: CtaType): string[] {
   if (type === 'urgency') {
     return [
@@ -168,4 +229,28 @@ function createAngleLabel(index: number): string {
   ];
 
   return angleLabels[index] ?? 'Curiosity';
+}
+
+function getPreviewHeadline(input: ExportFormatInput): string {
+  if (input.selectedHookText?.trim()) {
+    return input.selectedHookText.trim();
+  }
+
+  const promptPreview = getPreviewBody(input.prompt);
+
+  if (promptPreview.length > 0) {
+    return promptPreview;
+  }
+
+  return 'Your export preview will appear here.';
+}
+
+function getPreviewBody(prompt: string): string {
+  const normalizedPrompt = prompt.trim().replace(/\s+/g, ' ');
+
+  if (normalizedPrompt.length === 0) {
+    return 'Add a prompt to preview format-specific layout decisions.';
+  }
+
+  return normalizedPrompt.length > 96 ? `${normalizedPrompt.slice(0, 93)}...` : normalizedPrompt;
 }
