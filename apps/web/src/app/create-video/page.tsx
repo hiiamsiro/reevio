@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDeferredValue, useEffect, useState, useTransition } from 'react';
+import { buildPromptWithHook, createHookOptions, type HookOption } from './content-studio';
 import styles from './page.module.css';
 
 interface VideoResponse {
@@ -67,12 +68,24 @@ const workflowNotes = [
   'Preview state refreshes every 2.5 seconds.',
   'Voiceover and subtitles appear after orchestration.',
 ];
+const INITIAL_HOOK_SOURCE = 'Compact espresso machine for busy home baristas';
+const INITIAL_PROMPT =
+  'Create an affiliate video for a compact espresso machine with strong hook and CTA.';
 
 export default function CreateVideoPage() {
   const router = useRouter();
-  const [prompt, setPrompt] = useState(
-    'Create an affiliate video for a compact espresso machine with strong hook and CTA.'
+  const [hookSource, setHookSource] = useState(INITIAL_HOOK_SOURCE);
+  const [hookSeed, setHookSeed] = useState(0);
+  const [hookOptions, setHookOptions] = useState<HookOption[]>(() =>
+    createHookOptions({
+      productDescription: INITIAL_HOOK_SOURCE,
+      seed: 0,
+    })
   );
+  const [selectedHookId, setSelectedHookId] = useState<string | null>(null);
+  const [copiedHookId, setCopiedHookId] = useState<string | null>(null);
+  const [hookErrorMessage, setHookErrorMessage] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState(INITIAL_PROMPT);
   const [provider, setProvider] = useState('remotion');
   const [providers, setProviders] = useState<ProviderDefinition[]>([]);
   const [aspectRatio, setAspectRatio] = useState('9:16');
@@ -82,6 +95,10 @@ export default function CreateVideoPage() {
   const [isPending, startTransition] = useTransition();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const deferredPrompt = useDeferredValue(prompt);
+  const selectedHook = hookOptions.find((hookOption) => hookOption.id === selectedHookId) ?? null;
+  const composedPrompt = buildPromptWithHook(prompt, selectedHook?.text ?? null);
+  const previewPrompt =
+    video?.prompt ?? buildPromptWithHook(deferredPrompt, selectedHook?.text ?? null);
   const selectedProvider =
     providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
   const hasEnoughCredits =
@@ -236,7 +253,7 @@ export default function CreateVideoPage() {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          prompt: composedPrompt,
           provider,
           aspectRatio,
         }),
@@ -282,6 +299,49 @@ export default function CreateVideoPage() {
       router.refresh();
       setIsLoggingOut(false);
     }
+  };
+
+  const handleGenerateHooks = (): void => {
+    const normalizedHookSource = hookSource.trim();
+
+    if (normalizedHookSource.length === 0) {
+      setHookErrorMessage('Enter a product description before generating hooks.');
+      return;
+    }
+
+    const nextSeed = hookSeed + 1;
+
+    setHookSeed(nextSeed);
+    setHookOptions(
+      createHookOptions({
+        productDescription: normalizedHookSource,
+        seed: nextSeed,
+      })
+    );
+    setSelectedHookId(null);
+    setCopiedHookId(null);
+    setHookErrorMessage(null);
+  };
+
+  const handleSelectHook = (hookId: string): void => {
+    setSelectedHookId(hookId);
+  };
+
+  const handleCopyHook = (hook: HookOption): void => {
+    if (!navigator.clipboard) {
+      setHookErrorMessage('Clipboard is unavailable in this browser. Select the hook and copy manually.');
+      return;
+    }
+
+    void navigator.clipboard
+      .writeText(hook.text)
+      .then(() => {
+        setCopiedHookId(hook.id);
+        setHookErrorMessage(null);
+      })
+      .catch(() => {
+        setHookErrorMessage('Clipboard access failed. Select the hook and copy manually.');
+      });
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -391,6 +451,94 @@ export default function CreateVideoPage() {
             </div>
 
             <form className={styles.form} onSubmit={handleSubmit}>
+              <section className={styles.toolPanel} aria-labelledby="hook-generator-title">
+                <div className={styles.toolHeader}>
+                  <div>
+                    <p className={styles.sectionEyebrow}>Phase 25</p>
+                    <h3 className={styles.toolTitle} id="hook-generator-title">
+                      Viral hook generator
+                    </h3>
+                  </div>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={handleGenerateHooks}
+                    type="button"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.label} htmlFor="hookSource">
+                    Product description
+                  </label>
+                  <textarea
+                    id="hookSource"
+                    className={styles.textarea}
+                    value={hookSource}
+                    onChange={(event) => setHookSource(event.target.value)}
+                  />
+                </div>
+
+                <div className={styles.toolActions}>
+                  <button
+                    className={styles.secondaryButton}
+                    onClick={handleGenerateHooks}
+                    type="button"
+                  >
+                    Generate 10 hooks
+                  </button>
+                  <span className={styles.toolHint}>
+                    Hooks stay short, emotional, and curiosity-driven.
+                  </span>
+                </div>
+
+                {selectedHook ? (
+                  <div className={styles.selectedHookCard}>
+                    <span className={styles.selectedHookLabel}>Selected hook</span>
+                    <strong>{selectedHook.text}</strong>
+                  </div>
+                ) : null}
+
+                <div className={styles.hookGrid}>
+                  {hookOptions.map((hookOption) => {
+                    const isSelected = hookOption.id === selectedHookId;
+                    const isCopied = hookOption.id === copiedHookId;
+
+                    return (
+                      <article
+                        className={`${styles.hookCard} ${isSelected ? styles.hookCardSelected : ''}`}
+                        key={hookOption.id}
+                      >
+                        <div className={styles.hookCardTop}>
+                          <span className={styles.metaBadge}>{hookOption.angle}</span>
+                          <span className={styles.metaBadge}>{isSelected ? 'Selected' : 'Ready'}</span>
+                        </div>
+                        <p className={styles.hookText}>{hookOption.text}</p>
+                        <div className={styles.hookActions}>
+                          <button
+                            className={styles.ghostButton}
+                            onClick={() => handleCopyHook(hookOption)}
+                            type="button"
+                          >
+                            {isCopied ? 'Copied' : 'Copy'}
+                          </button>
+                          <button
+                            className={styles.ghostButton}
+                            onClick={() => handleSelectHook(hookOption.id)}
+                            type="button"
+                          >
+                            {isSelected ? 'Selected' : 'Select'}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {hookErrorMessage ? <p className={styles.error}>{hookErrorMessage}</p> : null}
+              </section>
+
               <div className={styles.fieldGroup}>
                 <label className={styles.label} htmlFor="prompt">
                   Prompt
@@ -523,7 +671,7 @@ export default function CreateVideoPage() {
                 <div className={styles.previewOverlay}>
                   <span className={styles.previewLabel}>Current prompt</span>
                   <h3 className={styles.previewHeadline}>{video?.title ?? 'Prompt preview'}</h3>
-                  <p className={styles.previewPrompt}>{video?.prompt ?? deferredPrompt}</p>
+                  <p className={styles.previewPrompt}>{previewPrompt}</p>
                 </div>
               </div>
 
