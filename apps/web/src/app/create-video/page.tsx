@@ -180,6 +180,8 @@ export default function CreateVideoPage() {
   const [watermarkType, setWatermarkType] = useState<'text' | 'logo'>('text');
   const [watermarkText, setWatermarkText] = useState('Reevio');
   const [watermarkPosition, setWatermarkPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
+  const [referralCode] = useState('REEVIO-START');
+  const [referralCredits] = useState(30);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -913,6 +915,17 @@ export default function CreateVideoPage() {
       .catch(() => {
         setErrorMessage('Failed to copy the delivery URL.');
       });
+  };
+
+  const handleCopyReferralCode = (): void => {
+    if (!navigator.clipboard) {
+      setErrorMessage('Clipboard is unavailable in this browser. Copy manually.');
+      return;
+    }
+
+    void navigator.clipboard.writeText(referralCode).catch(() => {
+      setErrorMessage('Failed to copy the referral code.');
+    });
   };
 
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
@@ -1911,6 +1924,39 @@ export default function CreateVideoPage() {
               <div className={styles.progressCard}>
                 <strong>Latest error</strong>
                 <p className={styles.previewPrompt}>{monitoringStats.latestError}</p>
+              </div>
+            </section>
+
+            <section className={styles.toolPanel} aria-labelledby="referral-title">
+              <div className={styles.toolHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Phase 40</p>
+                  <h3 className={styles.toolTitle} id="referral-title">
+                    Referral dashboard
+                  </h3>
+                </div>
+                <button
+                  className={styles.ghostButton}
+                  onClick={handleCopyReferralCode}
+                  type="button"
+                >
+                  Copy code
+                </button>
+              </div>
+
+              <div className={styles.scoreGrid}>
+                <div className={styles.heroMetric}>
+                  <span>Referral code</span>
+                  <strong>{referralCode}</strong>
+                </div>
+                <div className={styles.heroMetric}>
+                  <span>Reward</span>
+                  <strong>{referralCredits} credits</strong>
+                </div>
+                <div className={styles.heroMetric}>
+                  <span>Status</span>
+                  <strong>Invite friends</strong>
+                </div>
               </div>
             </section>
 
