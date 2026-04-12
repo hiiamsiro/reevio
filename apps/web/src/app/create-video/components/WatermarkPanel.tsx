@@ -1,6 +1,14 @@
 import { getWatermarkPositionClassName } from '../page.helpers';
 import type { WatermarkPanelProps } from './create-video-panels.types';
+import { CustomSelect, type CustomSelectOption } from './CustomSelect';
 import styles from '../page.module.css';
+
+const watermarkPositionOptions: readonly CustomSelectOption[] = [
+  { value: 'top-left', label: 'Top left', meta: 'Upper-left corner' },
+  { value: 'top-right', label: 'Top right', meta: 'Upper-right corner' },
+  { value: 'bottom-left', label: 'Bottom left', meta: 'Lower-left corner' },
+  { value: 'bottom-right', label: 'Bottom right', meta: 'Lower-right corner' },
+];
 
 export function WatermarkPanel({
   watermarkType,
@@ -14,7 +22,7 @@ export function WatermarkPanel({
     <section className={styles.toolPanel} aria-labelledby="watermark-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 36</p>
+          <p className={styles.sectionEyebrow}>Branding</p>
           <h3 className={styles.toolTitle} id="watermark-title">
             Watermark
           </h3>
@@ -46,16 +54,13 @@ export function WatermarkPanel({
           onChange={(event) => onWatermarkTextChange(event.target.value)}
           value={watermarkText}
         />
-        <select
-          className={styles.select}
-          onChange={(event) => onWatermarkPositionChange(event.target.value as WatermarkPanelProps['watermarkPosition'])}
+        <CustomSelect
+          options={watermarkPositionOptions}
+          onValueChange={(value) =>
+            onWatermarkPositionChange(value as WatermarkPanelProps['watermarkPosition'])
+          }
           value={watermarkPosition}
-        >
-          <option value="top-left">Top left</option>
-          <option value="top-right">Top right</option>
-          <option value="bottom-left">Bottom left</option>
-          <option value="bottom-right">Bottom right</option>
-        </select>
+        />
       </div>
 
       <div className={styles.watermarkPreview}>

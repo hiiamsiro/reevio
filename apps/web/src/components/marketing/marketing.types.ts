@@ -4,6 +4,8 @@ export interface GalleryItem {
   readonly credits: string;
   readonly tone: string;
   readonly ratio: string;
+  readonly imageSrc: string;
+  readonly imageAlt: string;
 }
 
 export interface WorkflowStep {

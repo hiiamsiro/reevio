@@ -33,6 +33,7 @@ export class TopviewProvider implements VideoProvider {
       url: outputUrl,
       previewUrl: outputUrl,
       durationInSeconds: input.orchestratedPlan.durationInSeconds,
+      artifactKind: 'json',
     };
   }
 }

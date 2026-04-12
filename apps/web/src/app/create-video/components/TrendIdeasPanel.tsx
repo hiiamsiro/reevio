@@ -6,7 +6,7 @@ export function TrendIdeasPanel({ trendIdeas }: TrendIdeasPanelProps) {
     <section className={styles.toolPanel} aria-labelledby="trend-engine-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 33</p>
+          <p className={styles.sectionEyebrow}>Trends</p>
           <h3 className={styles.toolTitle} id="trend-engine-title">
             Trending
           </h3>

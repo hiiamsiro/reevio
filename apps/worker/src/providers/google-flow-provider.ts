@@ -36,6 +36,7 @@ export class GoogleFlowProvider implements VideoProvider {
         (total, scene) => total + scene.durationInSeconds,
         0
       ),
+      artifactKind: 'json',
     };
   }
 }

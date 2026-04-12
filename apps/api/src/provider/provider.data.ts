@@ -71,4 +71,18 @@ export const PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
       supportsPromptOptimization: true,
     },
   },
+  {
+    name: 'gemini',
+    label: 'Gemini',
+    description: 'Google Gemini-powered storyboard and video generation for fast concept renders.',
+    status: 'beta',
+    priceTier: 'premium',
+    creditCost: 24,
+    capabilities: {
+      supportsSubtitles: true,
+      supportsVoiceover: true,
+      supportsVerticalVideo: true,
+      supportsPromptOptimization: true,
+    },
+  },
 ] as const;

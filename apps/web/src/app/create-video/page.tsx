@@ -2,832 +2,323 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useDeferredValue, useEffect, useState, useTransition } from 'react';
-import {
-  buildPromptWithCreativeDirectives,
-  createBulkVideoPrompt,
-  createExportFormats,
-  createHashtagSuggestionSet,
-  createCtaText,
-  createHookOptions,
-  createPostingPreparation,
-  createRewriteVariations,
-  createTrendIdeas,
-  createVideoTemplates,
-  createViralScoreAnalysis,
-  parseBulkProductList,
-  type CtaType,
-  type ExportFormatDefinition,
-  type ExportFormatId,
-  type HashtagSuggestionSet,
-  type HookOption,
-  type PostingPreparation,
-  type ViralScoreAnalysis,
-} from './content-studio';
-import {
-  INITIAL_HOOK_SOURCE,
-  INITIAL_PROMPT,
-  promptPresets,
-  styleModes,
-  workflowNotes,
-} from './page.constants';
-import {
-  createExportBrief,
-  createPerformanceInsight,
-  downloadTextFile,
-  toBulkJobStatus,
-  toPriceTierLabel,
-} from './page.helpers';
+import { Jost, Playfair_Display } from 'next/font/google';
+import { useEffect, useState } from 'react';
 import {
   loadCurrentUser,
   loadProviders,
-  loadVideo,
-  refreshCurrentUser,
-  requestVideoGeneration,
-  submitVideoRequest,
 } from './page.api';
+import { styleModes } from './page.constants';
+import { toPriceTierLabel } from './page.helpers';
+import { BriefStep } from './steps/BriefStep';
+import { SetupStep } from './steps/SetupStep';
+import { RenderStep } from './steps/RenderStep';
+import { PublishStep } from './steps/PublishStep';
 import {
-  BulkGenerationPanel,
-  CtaEnginePanel,
-  ExportPanel,
-  HashtagGeneratorPanel,
-  HookGeneratorPanel,
-  PerformanceAiPanel,
-  PostingPreparationPanel,
-  TeamModePanel,
-  TemplateGalleryPanel,
-  TrendIdeasPanel,
-  WatermarkPanel,
-} from './components';
+  CreateVideoProvider,
+  useCreateVideo,
+} from './hooks/useCreateVideoContext';
 import type {
-  BulkJobItem,
   CurrentUser,
   ProviderDefinition,
-  TeamMember,
-  VideoResponse,
-  WatermarkPosition,
 } from './page.types';
 import styles from './page.module.css';
 
-export default function CreateVideoPage() {
+// ─── Fonts ───────────────────────────────────────────────────────────────────
+
+const studioDisplay = Playfair_Display({ subsets: ['latin'], variable: '--landing-font-display' });
+const studioBody = Jost({ subsets: ['latin'], variable: '--landing-font-body' });
+
+// ─── Inner page (has access to context) ─────────────────────────────────────
+
+function CreateVideoInner() {
   const router = useRouter();
-  const [hookSource, setHookSource] = useState(INITIAL_HOOK_SOURCE);
-  const [hookSeed, setHookSeed] = useState(0);
-  const [hookOptions, setHookOptions] = useState<HookOption[]>(() =>
-    createHookOptions({
-      productDescription: INITIAL_HOOK_SOURCE,
-      seed: 0,
-    })
-  );
-  const [selectedHookId, setSelectedHookId] = useState<string | null>(null);
-  const [copiedHookId, setCopiedHookId] = useState<string | null>(null);
-  const [hookErrorMessage, setHookErrorMessage] = useState<string | null>(null);
-  const [ctaType, setCtaType] = useState<CtaType>('urgency');
-  const [ctaSeed, setCtaSeed] = useState(0);
-  const [ctaText, setCtaText] = useState(() =>
-    createCtaText({
-      productDescription: INITIAL_HOOK_SOURCE,
-      seed: 0,
-      type: 'urgency',
-    })
-  );
-  const [prompt, setPrompt] = useState(INITIAL_PROMPT);
-  const [provider, setProvider] = useState('remotion');
-  const [providers, setProviders] = useState<ProviderDefinition[]>([]);
-  const [aspectRatio, setAspectRatio] = useState('9:16');
-  const [video, setVideo] = useState<VideoResponse | null>(null);
-  const [selectedExportFormatId, setSelectedExportFormatId] =
-    useState<ExportFormatId>('tiktok-9x16');
-  const [bulkInput, setBulkInput] = useState(
-    'Compact espresso machine\nVitamin C serum kit\nAI subtitle generator'
-  );
-  const [bulkJobs, setBulkJobs] = useState<BulkJobItem[]>([]);
-  const [bulkErrorMessage, setBulkErrorMessage] = useState<string | null>(null);
-  const [isBulkGenerating, setIsBulkGenerating] = useState(false);
-  const [postingPreparation, setPostingPreparation] = useState<PostingPreparation>(() =>
-    createPostingPreparation({
-      prompt: INITIAL_PROMPT,
-      selectedHookText: null,
-      ctaText: createCtaText({
-        productDescription: INITIAL_HOOK_SOURCE,
-        seed: 0,
-        type: 'urgency',
-      }),
-    })
-  );
-  const [postingNotice, setPostingNotice] = useState<string | null>(null);
-  const [hashtagSeed, setHashtagSeed] = useState(0);
-  const [hashtagSuggestions, setHashtagSuggestions] = useState<HashtagSuggestionSet>(() =>
-    createHashtagSuggestionSet({
-      prompt: INITIAL_PROMPT,
-      seed: 0,
-    })
-  );
-  const [hashtagNotice, setHashtagNotice] = useState<string | null>(null);
-  const [selectedRewriteIndex, setSelectedRewriteIndex] = useState(0);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'owner' | 'editor'>('editor');
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    {
-      id: 'team-owner',
-      email: 'owner@reevio.app',
-      role: 'owner',
-    },
-  ]);
-  const [teamNotice, setTeamNotice] = useState<string | null>(null);
-  const [watermarkType, setWatermarkType] = useState<'text' | 'logo'>('text');
-  const [watermarkText, setWatermarkText] = useState('Reevio');
-  const [watermarkPosition, setWatermarkPosition] =
-    useState<WatermarkPosition>('bottom-right');
-  const [referralCode] = useState('REEVIO-START');
-  const [referralCredits] = useState(30);
-  const [autoMachineNotice, setAutoMachineNotice] = useState<string | null>(null);
-  const [views, setViews] = useState('12000');
-  const [likes, setLikes] = useState('840');
-  const [watchTime, setWatchTime] = useState('18');
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const deferredPrompt = useDeferredValue(prompt);
-  const selectedHook = hookOptions.find((hookOption) => hookOption.id === selectedHookId) ?? null;
-  const composedPrompt = buildPromptWithCreativeDirectives({
-    prompt,
-    selectedHookText: selectedHook?.text ?? null,
+  const [previewPlaybackFailed, setPreviewPlaybackFailed] = useState(false);
+  const {
+    activeStudioStep,
+    setActiveStudioStep,
+    studioSteps,
+    activeStepIndex,
+    previousStep,
+    nextStep,
+    stepCompletion,
+    // Brief
+    hookSource,
+    onHookSourceChange,
+    onGenerateHooks,
+    onUseCurrentBrief,
+    selectedHook,
+    hookOptions,
+    selectedHookId,
+    copiedHookId,
+    onCopyHook,
+    onSelectHook,
+    hookErrorMessage,
+    ctaType,
+    ctaSeed,
     ctaText,
-  });
-  const previewPrompt =
-    video?.prompt ??
-    buildPromptWithCreativeDirectives({
-      prompt: deferredPrompt,
-      selectedHookText: selectedHook?.text ?? null,
-      ctaText,
-    });
-  const exportFormats = createExportFormats({
+    onCtaTextChange,
+    onRegenerateCta,
+    onSelectCtaType,
     prompt,
-    selectedHookText: selectedHook?.text ?? null,
-    ctaText,
-  });
-  const selectedExportFormat =
-    exportFormats.find((format) => format.id === selectedExportFormatId) ?? exportFormats[0];
-  const viralScoreAnalysis: ViralScoreAnalysis = createViralScoreAnalysis({
-    prompt,
-    selectedHookText: selectedHook?.text ?? null,
-    ctaText,
-  });
-  const rewriteVariations = createRewriteVariations({
-    prompt,
-    selectedHookText: selectedHook?.text ?? null,
-    ctaText,
-  });
-  const activeRewriteVariation = rewriteVariations[selectedRewriteIndex] ?? rewriteVariations[0];
-  const trendIdeas = createTrendIdeas(prompt);
-  const videoTemplates = createVideoTemplates();
-  const selectedProvider =
-    providers.find((providerDefinition) => providerDefinition.name === provider) ?? null;
-  const storageUrl =
-    video?.outputUrl ??
-    `https://cdn.reevio.app/secure/${provider}/${aspectRatio.replace(':', 'x')}/preview.mp4`;
-  const monitoringStats = {
-    failedJobs: bulkJobs.filter((bulkJob) => bulkJob.status === 'failed').length,
-    activeJobs: bulkJobs.filter(
-      (bulkJob) => bulkJob.status === 'queued' || bulkJob.status === 'processing'
-    ).length,
-    latestError: bulkJobs.find((bulkJob) => bulkJob.errorMessage)?.errorMessage ?? 'No recent failures.',
-  };
-  const performanceInsight = createPerformanceInsight({
+    onPromptChange,
+    rewriteVariations,
+    selectedRewriteIndex,
+    onSelectedRewriteIndexChange,
+    onApplyRewriteVariation,
+    onApplyTemplate,
+    trendIdeas,
+    videoTemplates,
+    // Setup
+    providers,
+    selectedProvider,
+    provider,
+    onProviderChange,
+    aspectRatio,
+    onAspectRatioChange,
+    hasEnoughCredits,
+    isLowCredit,
+    currentUser,
+    bulkInput,
+    onBulkInputChange,
+    onBulkFileUpload,
+    bulkJobs,
+    onGenerateBulk,
+    isBulkGenerating,
+    onRetryBulkJob,
+    onRetryFailedBulkJobs,
+    bulkErrorMessage,
+    viralScoreAnalysis,
+    // Render
+    video,
+    isPending,
+    autoMachineNotice,
+    onSubmit,
+    onRunAutoContentMachine,
+    // Publish
+    exportFormats,
+    selectedExportFormatId,
+    onSelectExportFormat,
+    onDownloadFormat,
+    onDownloadAllFormats,
+    postingPreparation,
+    onRegeneratePostingPreparation,
+    onCopyPostingField,
+    onUpdatePostingPreparation,
+    postingNotice,
+    hashtagSuggestions,
+    onRegenerateHashtags,
+    onCopyHashtags,
+    onUseHashtagsInPosting,
+    hashtagNotice,
+    inviteEmail,
+    onInviteEmailChange,
+    inviteRole,
+    onInviteRoleChange,
+    onInviteMember,
+    teamMembers,
+    teamNotice,
+    watermarkType,
+    onWatermarkTypeChange,
+    watermarkText,
+    onWatermarkTextChange,
+    watermarkPosition,
+    onWatermarkPositionChange,
+    referralCode,
+    referralCredits,
+    onCopyReferralCode,
+    onCopyStorageUrl,
     views,
+    onViewsChange,
     likes,
+    onLikesChange,
     watchTime,
-  });
-  const hasEnoughCredits =
-    currentUser !== null && selectedProvider !== null
-      ? currentUser.credits >= selectedProvider.creditCost
-      : false;
-  const isLowCredit =
-    currentUser !== null && selectedProvider !== null
-      ? currentUser.credits < selectedProvider.creditCost * 2
-      : false;
+    onWatchTimeChange,
+    performanceInsight,
+    storageUrl,
+    selectedHook: hookSelected,
+  } = useCreateVideo();
+
+  const activeStepMeta = studioSteps[activeStepIndex] ?? studioSteps[0];
+  const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
+  const previewMediaUrl = video?.outputUrl ?? video?.previewUrl ?? null;
 
   useEffect(() => {
-    let isActive = true;
+    setPreviewPlaybackFailed(false);
+  }, [previewMediaUrl]);
 
-    void Promise.all([loadCurrentUser(router), loadProviders(router)])
-      .then(([session, providerList]) => {
-        if (!isActive || !session || !providerList) {
-          return;
-        }
-
-        setCurrentUser(session);
-        setProviders(providerList);
-      })
-      .catch((error: unknown) => {
-        if (!isActive) {
-          return;
-        }
-
-        if (error instanceof Error) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage('Failed to load providers.');
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (providers.length === 0) {
-      return;
-    }
-
-    if (providers.some((providerDefinition) => providerDefinition.name === provider)) {
-      return;
-    }
-
-    setProvider(providers[0].name);
-  }, [provider, providers]);
-
-  useEffect(() => {
-    if (!video?.id) {
-      return;
-    }
-
-    if (video.status === 'completed' || video.status === 'failed') {
-      return;
-    }
-
-    const refreshVideoStatus = async (): Promise<void> => {
-      const nextVideo = await loadVideo(video.id, router, 'Failed to refresh video.');
-
-      if (!nextVideo) {
-        return;
-      }
-
-      if (nextVideo.status === 'failed' || nextVideo.status === 'completed') {
-        await refreshCurrentUser(setCurrentUser);
-      }
-
-      setVideo(nextVideo);
-    };
-
-    const intervalId = window.setInterval(() => {
-      void refreshVideoStatus().catch((error: unknown) => {
-        if (error instanceof Error) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage('Failed to refresh video.');
-        }
-      });
-    }, 2500);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [video?.id, video?.status]);
-
-  useEffect(() => {
-    const pendingBulkJobs = bulkJobs.filter(
-      (bulkJob) => bulkJob.videoId && bulkJob.status !== 'completed' && bulkJob.status !== 'failed'
-    );
-
-    if (pendingBulkJobs.length === 0) {
-      return;
-    }
-
-    const refreshBulkJobs = async (): Promise<void> => {
-      const refreshedJobs = await Promise.all(
-        pendingBulkJobs.map(async (bulkJob) => {
-          const nextVideo = await loadVideo(
-            bulkJob.videoId!,
-            router,
-            `Failed to refresh bulk job "${bulkJob.id}".`
-          );
-
-          if (!nextVideo) {
-            throw new Error('Authentication is required.');
-          }
-
-          return {
-            id: bulkJob.id,
-            status: toBulkJobStatus(nextVideo.status),
-            outputUrl: nextVideo.outputUrl,
-            errorMessage: nextVideo.errorMessage,
-          };
-        })
-      );
-
-      setBulkJobs((previousJobs) =>
-        previousJobs.map((bulkJob) => {
-          const refreshedJob = refreshedJobs.find((item) => item.id === bulkJob.id);
-
-          if (!refreshedJob) {
-            return bulkJob;
-          }
-
-          return {
-            ...bulkJob,
-            status: refreshedJob.status,
-            outputUrl: refreshedJob.outputUrl,
-            errorMessage: refreshedJob.errorMessage,
-          };
-        })
-      );
-    };
-
-    const intervalId = window.setInterval(() => {
-      void refreshBulkJobs().catch((error: unknown) => {
-        if (error instanceof Error) {
-          setBulkErrorMessage(error.message);
-          return;
-        }
-
-        setBulkErrorMessage('Failed to refresh bulk jobs.');
-      });
-    }, 2500);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [bulkJobs]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-
-    startTransition(async () => {
-      await submitVideoRequest({
-        promptToSend: composedPrompt,
-        router,
-        provider,
-        aspectRatio,
-        setVideo,
-        setCurrentUser,
-        setErrorMessage,
-      });
-    });
-  };
+  const nextWorkspaceAction =
+    activeStudioStep === 'brief'
+      ? 'Lock the prompt, choose a hook, and define the CTA before moving on.'
+      : activeStudioStep === 'setup'
+        ? 'Select provider, aspect ratio, and make sure credits are ready.'
+        : activeStudioStep === 'render'
+          ? 'Generate the video and wait for the preview state to complete.'
+          : 'Export the output, prep posting assets, and hand it off.';
 
   const handleLogout = async (): Promise<void> => {
+    if (isLoggingOut) {
+      return;
+    }
+
     setIsLoggingOut(true);
-    setErrorMessage(null);
 
     try {
-      await fetch('/api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
       });
-    } finally {
-      router.push('/login');
+
+      if (!response.ok) {
+        throw new Error('Failed to log out.');
+      }
+
+      router.replace('/login');
       router.refresh();
+    } catch (error) {
+      console.error(error);
       setIsLoggingOut(false);
     }
   };
 
-  const handleGenerateHooks = (): void => {
-    const normalizedHookSource = hookSource.trim();
+  const renderActiveStep = () => {
+    switch (activeStudioStep) {
+      case 'brief':
+        return (
+          <BriefStep
+            hookSource={hookSource}
+            onHookSourceChange={onHookSourceChange}
+            onGenerateHooks={onGenerateHooks}
+            onUseCurrentBrief={onUseCurrentBrief}
+            selectedHook={hookSelected}
+            hookOptions={hookOptions}
+            selectedHookId={selectedHookId}
+            copiedHookId={copiedHookId}
+            onCopyHook={onCopyHook}
+            onSelectHook={onSelectHook}
+            hookErrorMessage={hookErrorMessage}
+            ctaType={ctaType}
+            ctaSeed={ctaSeed}
+            ctaText={ctaText}
+            onCtaTextChange={onCtaTextChange}
+            onRegenerateCta={onRegenerateCta}
+            onSelectCtaType={onSelectCtaType}
+            prompt={prompt}
+            onPromptChange={onPromptChange}
+            rewriteVariations={rewriteVariations}
+            selectedRewriteIndex={selectedRewriteIndex}
+            onSelectedRewriteIndexChange={onSelectedRewriteIndexChange}
+            onApplyRewriteVariation={onApplyRewriteVariation}
+            onApplyTemplate={onApplyTemplate}
+            trendIdeas={trendIdeas}
+            videoTemplates={videoTemplates}
+          />
+        );
 
-    if (normalizedHookSource.length === 0) {
-      setHookErrorMessage('Enter a product description before generating hooks.');
-      return;
-    }
+      case 'setup':
+        return (
+          <SetupStep
+            providers={providers}
+            selectedProvider={selectedProvider}
+            provider={provider}
+            onProviderChange={onProviderChange}
+            aspectRatio={aspectRatio}
+            onAspectRatioChange={onAspectRatioChange}
+            hasEnoughCredits={hasEnoughCredits}
+            isLowCredit={isLowCredit}
+            currentUserCredits={currentUser?.credits ?? null}
+            bulkInput={bulkInput}
+            onBulkInputChange={onBulkInputChange}
+            onBulkFileUpload={onBulkFileUpload}
+            onGenerateBulk={onGenerateBulk}
+            isBulkGenerating={isBulkGenerating}
+            onRetryFailedBulkJobs={onRetryFailedBulkJobs}
+            bulkJobs={bulkJobs}
+            onRetryBulkJob={onRetryBulkJob}
+            bulkErrorMessage={bulkErrorMessage}
+            viralScoreAnalysis={viralScoreAnalysis}
+          />
+        );
 
-    const nextSeed = hookSeed + 1;
+      case 'render':
+        return (
+          <RenderStep
+            provider={provider}
+            selectedProvider={selectedProvider}
+            hasEnoughCredits={hasEnoughCredits}
+            isPending={isPending}
+            onSubmit={onSubmit}
+            onRunAutoContentMachine={onRunAutoContentMachine}
+            autoMachineNotice={autoMachineNotice}
+            videoStatus={activeStatus}
+            previewMediaUrl={previewMediaUrl}
+            videoTitle={video?.title ?? null}
+            prompt={prompt}
+            errorMessage={video?.errorMessage ?? null}
+          />
+        );
 
-    setHookSeed(nextSeed);
-    setHookOptions(
-      createHookOptions({
-        productDescription: normalizedHookSource,
-        seed: nextSeed,
-      })
-    );
-    setSelectedHookId(null);
-    setCopiedHookId(null);
-    setHookErrorMessage(null);
-  };
-
-  const handleSelectHook = (hookId: string): void => {
-    setSelectedHookId(hookId);
-  };
-
-  const handleCopyHook = (hook: HookOption): void => {
-    if (!navigator.clipboard) {
-      setHookErrorMessage('Clipboard is unavailable in this browser. Select the hook and copy manually.');
-      return;
-    }
-
-    void navigator.clipboard
-      .writeText(hook.text)
-      .then(() => {
-        setCopiedHookId(hook.id);
-        setHookErrorMessage(null);
-      })
-      .catch(() => {
-        setHookErrorMessage('Clipboard access failed. Select the hook and copy manually.');
-      });
-  };
-
-  const handleRegenerateCta = (): void => {
-    const nextSeed = ctaSeed + 1;
-
-    setCtaSeed(nextSeed);
-    setCtaText(
-      createCtaText({
-        productDescription: hookSource,
-        seed: nextSeed,
-        type: ctaType,
-      })
-    );
-  };
-
-  const handleSelectCtaType = (type: CtaType): void => {
-    setCtaType(type);
-    setCtaSeed(0);
-    setCtaText(
-      createCtaText({
-        productDescription: hookSource,
-        seed: 0,
-        type,
-      })
-    );
-  };
-
-  const handleDownloadFormat = (format: ExportFormatDefinition): void => {
-    const fileContent = createExportBrief({
-      format,
-      prompt,
-      selectedHookText: selectedHook?.text ?? null,
-      ctaText,
-    });
-
-    downloadTextFile({
-      content: fileContent,
-      fileName: `${format.id}-export-brief.txt`,
-    });
-  };
-
-  const handleDownloadAllFormats = (): void => {
-    const fileContent = exportFormats
-      .map((format) =>
-        createExportBrief({
-          format,
-          prompt,
-          selectedHookText: selectedHook?.text ?? null,
-          ctaText,
-        })
-      )
-      .join('\n\n------------------------------\n\n');
-
-    downloadTextFile({
-      content: fileContent,
-      fileName: 'multi-format-export-brief.txt',
-    });
-  };
-
-  const handleBulkFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): Promise<void> => {
-    const uploadedFile = event.target.files?.[0];
-
-    if (!uploadedFile) {
-      return;
-    }
-
-    try {
-      const fileContent = await uploadedFile.text();
-
-      setBulkInput(fileContent);
-      setBulkErrorMessage(null);
-    } catch {
-      setBulkErrorMessage('Failed to read the uploaded list.');
-    }
-  };
-
-  const handleGenerateBulk = async (): Promise<void> => {
-    if (isBulkGenerating) {
-      return;
-    }
-
-    const productDescriptions = parseBulkProductList(bulkInput);
-
-    if (productDescriptions.length === 0) {
-      setBulkErrorMessage('Add at least one product description before bulk generation.');
-      return;
-    }
-
-    const initialBulkJobs = productDescriptions.map((productDescription, index) => ({
-      id: `bulk-${Date.now()}-${index + 1}`,
-      productDescription,
-      videoId: null,
-      status: 'processing' as const,
-      outputUrl: null,
-      errorMessage: null,
-    }));
-
-    setBulkJobs(initialBulkJobs);
-    setBulkErrorMessage(null);
-    setIsBulkGenerating(true);
-
-    const settledJobs = await Promise.allSettled(
-      initialBulkJobs.map(async (bulkJob) => {
-        const result = await requestVideoGeneration({
-          prompt: createBulkVideoPrompt(bulkJob.productDescription),
-          provider,
-          aspectRatio,
-          router,
-          fallbackError: `Failed to queue "${bulkJob.productDescription}".`,
-        });
-
-        return {
-          id: bulkJob.id,
-          videoId: result.video.id,
-          status: toBulkJobStatus(result.video.status),
-          outputUrl: result.video.outputUrl,
-          errorMessage: result.video.errorMessage,
-        };
-      })
-    );
-
-    setBulkJobs((previousJobs) =>
-      previousJobs.map((bulkJob, index) => {
-        const settledJob = settledJobs[index];
-
-        if (!settledJob || settledJob.status === 'rejected') {
-          return {
-            ...bulkJob,
-            status: 'failed',
-            errorMessage:
-              settledJob?.reason instanceof Error
-                ? settledJob.reason.message
-                : 'Failed to queue the bulk generation request.',
-          };
-        }
-
-        return {
-          ...bulkJob,
-          videoId: settledJob.value.videoId,
-          status: settledJob.value.status,
-          outputUrl: settledJob.value.outputUrl,
-          errorMessage: settledJob.value.errorMessage,
-        };
-      })
-    );
-
-    setIsBulkGenerating(false);
-    void refreshCurrentUser(setCurrentUser).catch(() => {
-      setBulkErrorMessage('Bulk generation completed, but credits could not be refreshed.');
-    });
-  };
-
-  const handleRetryBulkJob = async (bulkJobId: string): Promise<void> => {
-    const bulkJob = bulkJobs.find((item) => item.id === bulkJobId);
-
-    if (!bulkJob) {
-      return;
-    }
-
-    setBulkJobs((previousJobs) =>
-      previousJobs.map((item) =>
-        item.id === bulkJobId
-          ? {
-              ...item,
-              status: 'processing',
-              errorMessage: null,
-            }
-          : item
-      )
-    );
-
-    try {
-      const result = await requestVideoGeneration({
-        prompt: createBulkVideoPrompt(bulkJob.productDescription),
-        provider,
-        aspectRatio,
-        router,
-        fallbackError: `Failed to retry "${bulkJob.productDescription}".`,
-      });
-      const retryVideo = result.video;
-
-      setBulkJobs((previousJobs) =>
-        previousJobs.map((item) =>
-          item.id === bulkJobId
-            ? {
-                ...item,
-                videoId: retryVideo.id,
-                status: toBulkJobStatus(retryVideo.status),
-                outputUrl: retryVideo.outputUrl,
-                errorMessage: retryVideo.errorMessage,
-              }
-            : item
-        )
-      );
-      void refreshCurrentUser(setCurrentUser).catch(() => {
-        setBulkErrorMessage('Retry succeeded, but credits could not be refreshed.');
-      });
-    } catch (error: unknown) {
-      setBulkJobs((previousJobs) =>
-        previousJobs.map((item) =>
-          item.id === bulkJobId
-            ? {
-                ...item,
-                status: 'failed',
-                errorMessage:
-                  error instanceof Error ? error.message : 'Failed to retry the bulk generation request.',
-              }
-            : item
-        )
-      );
+      case 'publish':
+        return (
+          <PublishStep
+            prompt={prompt}
+            selectedHookText={hookSelected?.text ?? null}
+            ctaText={ctaText}
+            exportFormats={exportFormats}
+            selectedExportFormatId={selectedExportFormatId}
+            onSelectExportFormat={onSelectExportFormat}
+            onDownloadFormat={onDownloadFormat}
+            onDownloadAllFormats={onDownloadAllFormats}
+            postingPreparation={postingPreparation}
+            onRegeneratePostingPreparation={onRegeneratePostingPreparation}
+            onCopyPostingField={onCopyPostingField}
+            onUpdatePostingPreparation={onUpdatePostingPreparation}
+            postingNotice={postingNotice}
+            hashtagSuggestions={hashtagSuggestions}
+            onRegenerateHashtags={onRegenerateHashtags}
+            onCopyHashtags={onCopyHashtags}
+            onUseHashtagsInPosting={onUseHashtagsInPosting}
+            hashtagNotice={hashtagNotice}
+            inviteEmail={inviteEmail}
+            onInviteEmailChange={onInviteEmailChange}
+            inviteRole={inviteRole}
+            onInviteRoleChange={onInviteRoleChange}
+            onInviteMember={onInviteMember}
+            teamMembers={teamMembers}
+            teamNotice={teamNotice}
+            watermarkType={watermarkType}
+            onWatermarkTypeChange={onWatermarkTypeChange}
+            watermarkText={watermarkText}
+            onWatermarkTextChange={onWatermarkTextChange}
+            watermarkPosition={watermarkPosition}
+            onWatermarkPositionChange={onWatermarkPositionChange}
+            storageUrl={storageUrl}
+            onCopyStorageUrl={onCopyStorageUrl}
+            bulkJobs={bulkJobs}
+            referralCode={referralCode}
+            onCopyReferralCode={onCopyReferralCode}
+            referralCredits={referralCredits}
+            views={views}
+            onViewsChange={onViewsChange}
+            likes={likes}
+            onLikesChange={onLikesChange}
+            watchTime={watchTime}
+            onWatchTimeChange={onWatchTimeChange}
+            performanceInsight={performanceInsight}
+          />
+        );
     }
   };
-
-  const handleRetryFailedBulkJobs = (): void => {
-    const failedBulkJobs = bulkJobs.filter((bulkJob) => bulkJob.status === 'failed');
-
-    failedBulkJobs.forEach((bulkJob) => {
-      void handleRetryBulkJob(bulkJob.id);
-    });
-  };
-
-  const handleRegeneratePostingPreparation = (): void => {
-    setPostingPreparation(
-      createPostingPreparation({
-        prompt,
-        selectedHookText: selectedHook?.text ?? null,
-        ctaText,
-      })
-    );
-    setPostingNotice(null);
-  };
-
-  const handleUpdatePostingPreparation = (
-    field: keyof PostingPreparation,
-    value: string
-  ): void => {
-    setPostingPreparation((previousPostingPreparation) => ({
-      ...previousPostingPreparation,
-      [field]: value,
-    }));
-  };
-
-  const handleCopyPostingField = (label: string, value: string): void => {
-    if (!navigator.clipboard) {
-      setPostingNotice('Clipboard is unavailable in this browser. Copy manually.');
-      return;
-    }
-
-    void navigator.clipboard
-      .writeText(value)
-      .then(() => {
-        setPostingNotice(`${label} copied.`);
-      })
-      .catch(() => {
-        setPostingNotice(`Failed to copy ${label.toLowerCase()}.`);
-      });
-  };
-
-  const handleRegenerateHashtags = (): void => {
-    const nextSeed = hashtagSeed + 1;
-
-    setHashtagSeed(nextSeed);
-    setHashtagSuggestions(
-      createHashtagSuggestionSet({
-        prompt,
-        seed: nextSeed,
-      })
-    );
-    setHashtagNotice(null);
-  };
-
-  const handleCopyHashtags = (): void => {
-    if (!navigator.clipboard) {
-      setHashtagNotice('Clipboard is unavailable in this browser. Copy manually.');
-      return;
-    }
-
-    void navigator.clipboard
-      .writeText(hashtagSuggestions.combined)
-      .then(() => {
-        setHashtagNotice('Hashtag set copied.');
-      })
-      .catch(() => {
-        setHashtagNotice('Failed to copy hashtags.');
-      });
-  };
-
-  const handleUseHashtagsInPosting = (): void => {
-    setPostingPreparation((previousPostingPreparation) => ({
-      ...previousPostingPreparation,
-      hashtags: hashtagSuggestions.combined,
-    }));
-    setHashtagNotice('Hashtag set moved into posting preparation.');
-  };
-
-  const handleApplyRewriteVariation = (): void => {
-    setPrompt(activeRewriteVariation);
-  };
-
-  const handleApplyTemplate = (templatePrompt: string): void => {
-    setPrompt(templatePrompt);
-    setHookSource(templatePrompt);
-  };
-
-  const handleInviteMember = (): void => {
-    const normalizedEmail = inviteEmail.trim();
-
-    if (normalizedEmail.length === 0) {
-      setTeamNotice('Enter an email before sending an invite.');
-      return;
-    }
-
-    setTeamMembers((previousMembers) => [
-      ...previousMembers,
-      {
-        id: `team-${previousMembers.length + 1}`,
-        email: normalizedEmail,
-        role: inviteRole,
-      },
-    ]);
-    setInviteEmail('');
-    setInviteRole('editor');
-    setTeamNotice(`Invite prepared for ${normalizedEmail}.`);
-  };
-
-  const handleCopyStorageUrl = (): void => {
-    if (!navigator.clipboard) {
-      setErrorMessage('Clipboard is unavailable in this browser. Copy manually.');
-      return;
-    }
-
-    void navigator.clipboard
-      .writeText(storageUrl)
-      .then(() => {
-        setErrorMessage(null);
-      })
-      .catch(() => {
-        setErrorMessage('Failed to copy the delivery URL.');
-      });
-  };
-
-  const handleCopyReferralCode = (): void => {
-    if (!navigator.clipboard) {
-      setErrorMessage('Clipboard is unavailable in this browser. Copy manually.');
-      return;
-    }
-
-    void navigator.clipboard.writeText(referralCode).catch(() => {
-      setErrorMessage('Failed to copy the referral code.');
-      });
-  };
-
-  const handleRunAutoContentMachine = (): void => {
-    const autoHooks = createHookOptions({
-      productDescription: hookSource,
-      seed: 0,
-    });
-    const autoHook = autoHooks[0] ?? null;
-    const autoCtaText = createCtaText({
-      productDescription: hookSource,
-      seed: 0,
-      type: 'urgency',
-    });
-    const autoPrompt =
-      hookSource.trim().length > 0
-        ? `Create a ready-to-publish affiliate video for ${hookSource.trim()} with auto script, auto video, and auto voiceover.`
-        : 'Create a ready-to-publish affiliate video with auto script, auto video, and auto voiceover.';
-
-    setHookOptions(autoHooks);
-    setSelectedHookId(autoHook?.id ?? null);
-    setCtaText(autoCtaText);
-    setPrompt(autoPrompt);
-    setAutoMachineNotice('Auto pipeline prepared for 1-click generation.');
-
-    startTransition(async () => {
-      await submitVideoRequest({
-        promptToSend: buildPromptWithCreativeDirectives({
-          prompt: autoPrompt,
-          selectedHookText: autoHook?.text ?? null,
-          ctaText: autoCtaText,
-        }),
-        router,
-        provider,
-        aspectRatio,
-        setVideo,
-        setCurrentUser,
-        setErrorMessage,
-      });
-    });
-  };
-
-  const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${studioDisplay.variable} ${studioBody.variable}`}>
       <div className={styles.backdrop} />
+      <div className={styles.gridLines} />
       <div className={styles.glowOne} />
       <div className={styles.glowTwo} />
 
       <div className={styles.shell}>
+        {/* ── Nav ─────────────────────────────────────────────────── */}
         <header className={styles.nav}>
           <div className={styles.brandLockup}>
             <span className={styles.brandMark} aria-hidden="true" />
@@ -836,43 +327,41 @@ export default function CreateVideoPage() {
               <p className={styles.brandMeta}>Create video workspace</p>
             </div>
           </div>
-
           <div className={styles.navActions}>
             <span className={styles.liveBadge}>
               {currentUser ? `${currentUser.email} · ${currentUser.plan}` : 'Loading workspace'}
             </span>
-            <button
-              className={styles.navLink}
-              onClick={handleLogout}
-              type="button"
-              disabled={isLoggingOut}
-            >
-              {isLoggingOut ? 'Signing out...' : 'Log out'}
-            </button>
             <Link className={styles.navLink} href="/pricing">
               Buy credits
             </Link>
+            <button
+              className={styles.navButton}
+              disabled={isLoggingOut}
+              onClick={() => void handleLogout()}
+              type="button"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </button>
           </div>
         </header>
 
+        {/* ── Hero ────────────────────────────────────────────────── */}
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>Create video</p>
-            <h1 className={styles.title}>Generate, preview, and route renders inside the same visual system.</h1>
+            <h1 className={styles.title}>
+              Generate, preview, and route renders inside the same visual system.
+            </h1>
             <p className={styles.subtitle}>
               This editor now follows the same dark glass surface as the landing page, with vibrant
               accents for prompts, provider state, and render feedback.
             </p>
-
             <div className={styles.quickRow}>
               {styleModes.map((mode) => (
-                <span className={styles.quickPill} key={mode}>
-                  {mode}
-                </span>
+                <span className={styles.quickPill} key={mode}>{mode}</span>
               ))}
             </div>
           </div>
-
           <div className={styles.heroPanel}>
             <div className={styles.heroMetric}>
               <span>Active provider</span>
@@ -893,12 +382,51 @@ export default function CreateVideoPage() {
           </div>
         </section>
 
-        <div className={styles.grid}>
-          <section className={styles.card}>
+        {/* ── Main grid ─────────────────────────────────────────────── */}
+        <div className={styles.studioGrid}>
+          {/* ── Step panel ─────────────────────────────────────────── */}
+          <section className={`${styles.card} ${styles.panelStack}`}>
+            {/* Step tabs */}
+            <div className={styles.tabList} aria-label="Create video workflow steps">
+              {studioSteps.map((step) => {
+                const isActive = step.id === activeStudioStep;
+                const isReady = stepCompletion[step.id];
+                return (
+                  <button
+                    aria-pressed={isActive}
+                    className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''} ${isActive ? styles.tabButtonCurrent : ''}`}
+                    data-current={isActive ? 'true' : 'false'}
+                    key={step.id}
+                    onClick={() => setActiveStudioStep(step.id)}
+                    type="button"
+                  >
+                    <span className={styles.tabEyebrow}>{step.eyebrow}</span>
+                    <strong>{step.label}</strong>
+                    <span className={styles.tabDescription}>{step.description}</span>
+                    <span
+                      className={`${styles.tabStatus} ${isActive ? styles.tabStatusCurrent : ''}`}
+                    >
+                      {isActive ? 'Current step' : isReady ? 'Ready' : step.status}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Card header */}
             <div className={styles.cardHeader}>
               <div>
-                <p className={styles.sectionEyebrow}>Prompt studio</p>
-                <h2 className={styles.cardTitle}>Shape the brief before you spend credits.</h2>
+                <p className={styles.sectionEyebrow}>{activeStepMeta.eyebrow}</p>
+                <h2 className={styles.cardTitle}>
+                  {activeStudioStep === 'brief'
+                    ? 'Write the brief and shape the creative angle.'
+                    : activeStudioStep === 'setup'
+                      ? 'Configure the render stack before spending credits.'
+                      : activeStudioStep === 'render'
+                        ? 'Launch the render and monitor the output.'
+                        : 'Package the output for publishing and handoff.'}
+                </h2>
+                <p className={styles.sectionSummary}>{nextWorkspaceAction}</p>
               </div>
               <div className={styles.metaCluster}>
                 <span className={styles.metaBadge}>
@@ -907,474 +435,230 @@ export default function CreateVideoPage() {
                 {selectedProvider ? (
                   <span className={styles.metaBadge}>{selectedProvider.creditCost} credits / render</span>
                 ) : null}
-                <span className={styles.metaBadge}>Authenticated session</span>
+                <span className={styles.metaBadge}>{activeStepMeta.label} workspace</span>
               </div>
             </div>
 
-            <div className={styles.presetGrid}>
-              {promptPresets.map((preset, index) => (
-                <button
-                  className={styles.presetCard}
-                  key={preset}
-                  onClick={() => setPrompt(preset)}
-                  type="button"
-                >
-                  <span className={styles.presetIndex}>0{index + 1}</span>
-                  <span>{preset}</span>
-                </button>
-              ))}
+            {/* Summary strip */}
+            <div className={styles.summaryStrip}>
+              <div className={styles.summaryCard}>
+                <span className={styles.summaryLabel}>Current step</span>
+                <strong>{activeStepMeta.label}</strong>
+              </div>
+              <div className={styles.summaryCard}>
+                <span className={styles.summaryLabel}>Next milestone</span>
+                <strong>{nextStep ? studioSteps.find(s => s.id === nextStep)?.label ?? nextStep : 'Finalize publish stack'}</strong>
+              </div>
             </div>
 
-            <form className={styles.form} onSubmit={handleSubmit}>
-              <HookGeneratorPanel
-                copiedHookId={copiedHookId}
-                errorMessage={hookErrorMessage}
-                hookOptions={hookOptions}
-                hookSource={hookSource}
-                onCopyHook={handleCopyHook}
-                onGenerateHooks={handleGenerateHooks}
-                onHookSourceChange={setHookSource}
-                onSelectHook={handleSelectHook}
-                selectedHook={selectedHook}
-                selectedHookId={selectedHookId}
-              />
+            {/* Active step content */}
+            <div className={styles.activePanel}>
+              {renderActiveStep()}
+            </div>
 
-              <div className={styles.fieldGroup}>
-                <label className={styles.label} htmlFor="prompt">
-                  Prompt
-                </label>
-                <textarea
-                  id="prompt"
-                  className={styles.textarea}
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                />
-              </div>
-
-              <CtaEnginePanel
-                ctaText={ctaText}
-                ctaType={ctaType}
-                onCtaTextChange={setCtaText}
-                onRegenerateCta={handleRegenerateCta}
-                onSelectCtaType={handleSelectCtaType}
-              />
-
-              <BulkGenerationPanel
-                bulkInput={bulkInput}
-                bulkJobs={bulkJobs}
-                errorMessage={bulkErrorMessage}
-                isBulkGenerating={isBulkGenerating}
-                onBulkFileUpload={handleBulkFileUpload}
-                onBulkInputChange={setBulkInput}
-                onGenerateBulk={handleGenerateBulk}
-                onRetryBulkJob={handleRetryBulkJob}
-                onRetryFailedBulkJobs={handleRetryFailedBulkJobs}
-              />
-
-              <div className={styles.fieldRow}>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="provider">
-                    Provider
-                  </label>
-                  <select
-                    id="provider"
-                    className={styles.select}
-                    value={provider}
-                    onChange={(event) => setProvider(event.target.value)}
-                    disabled={providers.length === 0}
-                  >
-                    {providers.map((providerDefinition) => (
-                      <option key={providerDefinition.name} value={providerDefinition.name}>
-                        {providerDefinition.label} - {toPriceTierLabel(providerDefinition.priceTier)} -{' '}
-                        {providerDefinition.creditCost} credits
-                      </option>
-                    ))}
-                  </select>
-
-                  {selectedProvider ? (
-                    <div className={styles.providerMeta}>
-                      <span className={styles.metaBadge}>
-                        {toPriceTierLabel(selectedProvider.priceTier)}
-                      </span>
-                      <span className={styles.metaBadge}>{selectedProvider.status}</span>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.label} htmlFor="aspectRatio">
-                    Aspect ratio
-                  </label>
-                  <select
-                    id="aspectRatio"
-                    className={styles.select}
-                    value={aspectRatio}
-                    onChange={(event) => setAspectRatio(event.target.value)}
-                  >
-                    <option value="9:16">9:16</option>
-                    <option value="16:9">16:9</option>
-                    <option value="1:1">1:1</option>
-                    <option value="4:5">4:5</option>
-                  </select>
-                </div>
-              </div>
-
-              {selectedProvider ? (
-                <div className={styles.providerCard}>
-                  <div>
-                    <p className={styles.providerLabel}>Provider profile</p>
-                    <h3>{selectedProvider.label}</h3>
-                  </div>
-                  <p>
-                    {selectedProvider.description} This render costs {selectedProvider.creditCost}{' '}
-                    credits.
-                  </p>
-                </div>
-              ) : null}
-
-              {selectedProvider && currentUser ? (
-                <div className={styles.providerCard}>
-                  <div>
-                    <p className={styles.providerLabel}>Credit status</p>
-                    <h3>{hasEnoughCredits ? 'Ready to generate' : 'Insufficient credits'}</h3>
-                  </div>
-                  <p>
-                    {hasEnoughCredits
-                      ? isLowCredit
-                        ? `You have ${currentUser.credits} credits left, so you are close to your threshold for ${selectedProvider.label}. Open Buy credits when you need a top-up.`
-                        : `You have ${currentUser.credits} credits available for this ${selectedProvider.creditCost}-credit render.`
-                      : `You need ${selectedProvider.creditCost} credits but only have ${currentUser.credits}. Failed final renders refund automatically, and you can top up from Buy credits.`}
-                  </p>
-                </div>
-              ) : null}
-
-              <div className={styles.toolPanel} aria-labelledby="viral-score-title">
-                <div className={styles.toolHeader}>
-                  <div>
-                    <p className={styles.sectionEyebrow}>Phase 31</p>
-                    <h3 className={styles.toolTitle} id="viral-score-title">
-                      Viral score
-                    </h3>
-                  </div>
-                  <span className={styles.scoreBadge}>{viralScoreAnalysis.score}/100</span>
-                </div>
-
-                <div className={styles.scoreGrid}>
-                  <div className={styles.heroMetric}>
-                    <span>Hook</span>
-                    <strong>{viralScoreAnalysis.hook}</strong>
-                  </div>
-                  <div className={styles.heroMetric}>
-                    <span>Emotion</span>
-                    <strong>{viralScoreAnalysis.emotion}</strong>
-                  </div>
-                  <div className={styles.heroMetric}>
-                    <span>Length</span>
-                    <strong>{viralScoreAnalysis.length}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <section className={styles.toolPanel} aria-labelledby="rewrite-engine-title">
-                <div className={styles.toolHeader}>
-                  <div>
-                    <p className={styles.sectionEyebrow}>Phase 32</p>
-                    <h3 className={styles.toolTitle} id="rewrite-engine-title">
-                      Rewrite engine
-                    </h3>
-                  </div>
-                  <button
-                    className={styles.secondaryButton}
-                    onClick={handleApplyRewriteVariation}
-                    type="button"
-                  >
-                    Use selected version
-                  </button>
-                </div>
-
-                <div className={styles.segmentGroup}>
-                  {rewriteVariations.map((variation, index) => {
-                    const isActive = index === selectedRewriteIndex;
-
-                    return (
-                      <button
-                        aria-pressed={isActive}
-                        className={`${styles.segmentButton} ${isActive ? styles.segmentButtonActive : ''}`}
-                        key={variation}
-                        onClick={() => setSelectedRewriteIndex(index)}
-                        type="button"
-                      >
-                        V{index + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className={styles.progressCard}>
-                  <p className={styles.previewPrompt}>{activeRewriteVariation}</p>
-                </div>
-              </section>
-
+            {/* Step navigation */}
+            <div className={styles.stepActions}>
               <button
-                className={styles.submit}
-                disabled={isPending || selectedProvider === null || !hasEnoughCredits}
-                type="submit"
+                className={styles.ghostButton}
+                disabled={previousStep === null}
+                onClick={() => previousStep && setActiveStudioStep(previousStep)}
+                type="button"
               >
-                {isPending
-                  ? 'Generating preview...'
-                  : !hasEnoughCredits && selectedProvider
-                    ? `Need ${selectedProvider.creditCost} credits`
-                    : 'Generate video'}
+                Previous step
               </button>
-            </form>
-          </section>
-
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.sectionEyebrow}>Live preview</p>
-                <h2 className={styles.cardTitle}>See the render state update in real time.</h2>
-              </div>
-            </div>
-
-            <div className={styles.previewCanvas}>
-              <div className={styles.previewTop}>
-                <div className={styles.meta}>
-                  <span className={styles.pill}>{selectedProvider?.label ?? provider}</span>
-                  {selectedProvider ? (
-                    <span className={styles.pill}>
-                      {toPriceTierLabel(selectedProvider.priceTier)}
-                    </span>
-                  ) : null}
-                  {selectedProvider ? <span className={styles.pill}>{selectedProvider.creditCost} credits</span> : null}
-                  <span className={styles.pill}>{aspectRatio}</span>
-                  <span className={styles.pill}>{activeStatus}</span>
-                </div>
-                <span className={styles.previewSignal}>Auto refresh every 2.5s</span>
-              </div>
-
-              <div className={styles.previewScreen}>
-                <div className={styles.previewGlow} />
-                <div className={styles.previewOverlay}>
-                  <span className={styles.previewLabel}>Current prompt</span>
-                  <h3 className={styles.previewHeadline}>{video?.title ?? 'Prompt preview'}</h3>
-                  <p className={styles.previewPrompt}>{previewPrompt}</p>
-                </div>
-              </div>
-
-              <div className={styles.statusGrid}>
-                <div className={styles.statusRow}>
-                  <span className={styles.statusLabel}>Video ID</span>
-                  <span className={styles.statusValue}>{video?.id ?? 'Waiting for first request'}</span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span className={styles.statusLabel}>Output URL</span>
-                  <span className={styles.statusValue}>
-                    {video?.outputUrl ?? 'Rendering pipeline not started yet'}
-                  </span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span className={styles.statusLabel}>Voiceover</span>
-                  <span className={styles.statusValue}>
-                    {video?.voiceoverUrl ?? 'Will appear after orchestration'}
-                  </span>
-                </div>
-                <div className={styles.statusRow}>
-                  <span className={styles.statusLabel}>Subtitles</span>
-                  <span className={styles.statusValue}>
-                    {video?.subtitlesUrl ?? 'Will appear after orchestration'}
-                  </span>
-                </div>
-              </div>
-
-              {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
-              {video?.errorMessage ? <p className={styles.error}>{video.errorMessage}</p> : null}
-            </div>
-
-            <ExportPanel
-              exportFormats={exportFormats}
-              onDownloadAllFormats={handleDownloadAllFormats}
-              onDownloadFormat={handleDownloadFormat}
-              onSelectExportFormat={setSelectedExportFormatId}
-              selectedExportFormat={selectedExportFormat}
-            />
-
-            <PostingPreparationPanel
-              onCopyPostingField={handleCopyPostingField}
-              onRegeneratePostingPreparation={handleRegeneratePostingPreparation}
-              onUpdatePostingPreparation={handleUpdatePostingPreparation}
-              postingNotice={postingNotice}
-              postingPreparation={postingPreparation}
-            />
-
-            <HashtagGeneratorPanel
-              hashtagNotice={hashtagNotice}
-              hashtagSuggestions={hashtagSuggestions}
-              onCopyHashtags={handleCopyHashtags}
-              onRegenerateHashtags={handleRegenerateHashtags}
-              onUseHashtagsInPosting={handleUseHashtagsInPosting}
-            />
-
-            <TrendIdeasPanel trendIdeas={trendIdeas} />
-
-            <TemplateGalleryPanel onApplyTemplate={handleApplyTemplate} videoTemplates={videoTemplates} />
-
-            <TeamModePanel
-              inviteEmail={inviteEmail}
-              inviteRole={inviteRole}
-              onInviteEmailChange={setInviteEmail}
-              onInviteMember={handleInviteMember}
-              onInviteRoleChange={setInviteRole}
-              teamMembers={teamMembers}
-              teamNotice={teamNotice}
-            />
-
-            <WatermarkPanel
-              onWatermarkPositionChange={setWatermarkPosition}
-              onWatermarkTextChange={setWatermarkText}
-              onWatermarkTypeChange={setWatermarkType}
-              watermarkPosition={watermarkPosition}
-              watermarkText={watermarkText}
-              watermarkType={watermarkType}
-            />
-
-            <section className={styles.toolPanel} aria-labelledby="storage-cdn-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 37</p>
-                  <h3 className={styles.toolTitle} id="storage-cdn-title">
-                    Storage + CDN
-                  </h3>
-                </div>
-                <button
-                  className={styles.ghostButton}
-                  onClick={handleCopyStorageUrl}
-                  type="button"
-                >
-                  Copy URL
-                </button>
-              </div>
-
-              <div className={styles.progressCard}>
-                <strong>Delivery URL</strong>
-                <p className={styles.previewPrompt}>{storageUrl}</p>
-                <div className={styles.tagList}>
-                  <span className={styles.metaBadge}>Fast load</span>
-                  <span className={styles.metaBadge}>Secure access</span>
-                  <span className={styles.metaBadge}>CDN edge ready</span>
-                </div>
-              </div>
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="monitoring-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 38</p>
-                  <h3 className={styles.toolTitle} id="monitoring-title">
-                    Monitoring
-                  </h3>
-                </div>
-              </div>
-
-              <div className={styles.scoreGrid}>
-                <div className={styles.heroMetric}>
-                  <span>Failed jobs</span>
-                  <strong>{monitoringStats.failedJobs}</strong>
-                </div>
-                <div className={styles.heroMetric}>
-                  <span>Active jobs</span>
-                  <strong>{monitoringStats.activeJobs}</strong>
-                </div>
-                <div className={styles.heroMetric}>
-                  <span>System</span>
-                  <strong>{monitoringStats.failedJobs === 0 ? 'Healthy' : 'Attention'}</strong>
-                </div>
-              </div>
-
-              <div className={styles.progressCard}>
-                <strong>Latest error</strong>
-                <p className={styles.previewPrompt}>{monitoringStats.latestError}</p>
-              </div>
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="referral-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 40</p>
-                  <h3 className={styles.toolTitle} id="referral-title">
-                    Referral dashboard
-                  </h3>
-                </div>
-                <button
-                  className={styles.ghostButton}
-                  onClick={handleCopyReferralCode}
-                  type="button"
-                >
-                  Copy code
-                </button>
-              </div>
-
-              <div className={styles.scoreGrid}>
-                <div className={styles.heroMetric}>
-                  <span>Referral code</span>
-                  <strong>{referralCode}</strong>
-                </div>
-                <div className={styles.heroMetric}>
-                  <span>Reward</span>
-                  <strong>{referralCredits} credits</strong>
-                </div>
-                <div className={styles.heroMetric}>
-                  <span>Status</span>
-                  <strong>Invite friends</strong>
-                </div>
-              </div>
-            </section>
-
-            <section className={styles.toolPanel} aria-labelledby="auto-machine-title">
-              <div className={styles.toolHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Phase 41</p>
-                  <h3 className={styles.toolTitle} id="auto-machine-title">
-                    Auto content machine
-                  </h3>
-                </div>
+              {nextStep ? (
                 <button
                   className={styles.secondaryButton}
-                  onClick={handleRunAutoContentMachine}
+                  disabled={!stepCompletion[activeStudioStep]}
+                  onClick={() => setActiveStudioStep(nextStep)}
                   type="button"
                 >
-                  1-click video
+                  Continue to {nextStep ? nextStep.charAt(0).toUpperCase() + nextStep.slice(1) : ''}
                 </button>
-              </div>
-
-              <div className={styles.progressCard}>
-                <strong>Pipeline</strong>
-                <p className={styles.previewPrompt}>Auto script, auto video, auto voiceover, ready output.</p>
-              </div>
-
-              {autoMachineNotice ? <p className={styles.toolHint}>{autoMachineNotice}</p> : null}
-            </section>
-
-            <PerformanceAiPanel
-              likes={likes}
-              onLikesChange={setLikes}
-              onViewsChange={setViews}
-              onWatchTimeChange={setWatchTime}
-              performanceInsight={performanceInsight}
-              views={views}
-              watchTime={watchTime}
-            />
-
-            <div className={styles.noteGrid}>
-              {workflowNotes.map((note) => (
-                <div className={styles.noteCard} key={note}>
-                  {note}
-                </div>
-              ))}
+              ) : (
+                <span className={styles.toolHint}>
+                  Publishing stack is ready once your render is complete.
+                </span>
+              )}
             </div>
           </section>
+
+          {/* ── Sidebar ─────────────────────────────────────────────── */}
+          <aside className={styles.sidebarStack}>
+            {/* Workflow rail */}
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Workflow rail</p>
+                  <h2 className={styles.cardTitle}>Track the pipeline at a glance.</h2>
+                </div>
+              </div>
+              <div className={styles.workflowRail}>
+                {studioSteps.map((step) => {
+                  const isActive = step.id === activeStudioStep;
+                  const isReady = stepCompletion[step.id];
+                  return (
+                    <div
+                      className={`${styles.workflowStep} ${isReady ? styles.workflowStepReady : ''} ${isActive ? styles.workflowStepCurrent : ''}`}
+                      data-current={isActive ? 'true' : 'false'}
+                      key={step.id}
+                    >
+                      <div className={styles.workflowStepTop}>
+                        <span className={styles.workflowStepIndex}>{step.eyebrow}</span>
+                        <span
+                          className={`${styles.workflowStepStatus} ${isReady ? styles.workflowStepStatusReady : ''} ${isActive ? styles.workflowStepStatusCurrent : ''}`}
+                        >
+                          {isActive ? 'Current step' : isReady ? 'Ready' : step.status}
+                        </span>
+                      </div>
+                      <strong>{step.label}</strong>
+                      <p className={styles.workflowStepDetail}>{step.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className={styles.summaryStrip}>
+                <div className={styles.summaryCard}>
+                  <span className={styles.summaryLabel}>Selected provider</span>
+                  <strong>{selectedProvider?.label ?? 'Choose in setup step'}</strong>
+                </div>
+                <div className={styles.summaryCard}>
+                  <span className={styles.summaryLabel}>Publish readiness</span>
+                  <strong>{video?.outputUrl ? 'Output available' : 'Waiting for render output'}</strong>
+                </div>
+              </div>
+            </section>
+
+            {/* Live preview */}
+            <section className={`${styles.card} ${styles.previewSection}`}>
+              <div className={`${styles.cardHeader} ${styles.previewSectionHeader}`}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Live preview</p>
+                  <h2 className={styles.previewSectionTitle}>Preview stays visible while you move.</h2>
+                  <p className={styles.previewSectionCopy}>
+                    Keep the current output and render context in view without the sidebar feeling cramped.
+                  </p>
+                </div>
+              </div>
+              <div className={styles.previewCanvas}>
+                <div className={styles.previewTop}>
+                  <div className={`${styles.meta} ${styles.previewMeta}`}>
+                    <span className={`${styles.pill} ${styles.previewPill}`}>{selectedProvider?.label ?? provider}</span>
+                    {selectedProvider ? <span className={`${styles.pill} ${styles.previewPill}`}>{toPriceTierLabel(selectedProvider.priceTier)}</span> : null}
+                    {selectedProvider ? <span className={`${styles.pill} ${styles.previewPill}`}>{selectedProvider.creditCost} credits</span> : null}
+                    <span className={`${styles.pill} ${styles.previewPill}`}>{aspectRatio}</span>
+                    <span className={`${styles.pill} ${styles.previewPill}`}>{activeStatus}</span>
+                  </div>
+                  <span className={`${styles.previewSignal} ${styles.previewSignalCompact}`}>Live</span>
+                </div>
+                <div className={styles.previewScreen}>
+                  {previewMediaUrl && !previewPlaybackFailed ? (
+                    <>
+                      <video
+                        autoPlay
+                        className={styles.previewVideo}
+                        controls
+                        loop
+                        muted
+                        onError={() => setPreviewPlaybackFailed(true)}
+                        playsInline
+                        preload="metadata"
+                        src={previewMediaUrl}
+                      />
+                      <div className={styles.previewOverlay}>
+                        <span className={styles.previewLabel}>Generated output</span>
+                        <h3 className={styles.previewHeadline}>{video?.title ?? 'Preview ready'}</h3>
+                        <p className={styles.previewPrompt}>{prompt}</p>
+                      </div>
+                    </>
+                  ) : previewMediaUrl ? (
+                    <div className={styles.previewFallback}>
+                      <span className={styles.previewLabel}>Generated output</span>
+                      <h3 className={styles.previewHeadline}>{video?.title ?? 'Output is ready'}</h3>
+                      <p className={styles.previewPrompt}>
+                        This render finished, but the returned asset could not be played inline.
+                        Open the output directly from the generated URL below.
+                      </p>
+                      <a
+                        className={styles.secondaryButton}
+                        href={previewMediaUrl}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Open output
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.previewGlow} />
+                      <div className={styles.previewOverlay}>
+                        <span className={styles.previewLabel}>Current prompt</span>
+                        <h3 className={styles.previewHeadline}>{video?.title ?? 'Preview'}</h3>
+                        <p className={styles.previewPrompt}>{prompt}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className={`${styles.statusGrid} ${styles.previewStatusGrid}`}>
+                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
+                    <span className={styles.statusLabel}>Video ID</span>
+                    <span className={styles.statusValue}>{video?.id ?? 'Waiting for first request'}</span>
+                  </div>
+                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
+                    <span className={styles.statusLabel}>Output URL</span>
+                    <span className={styles.statusValue}>{video?.outputUrl ?? 'Rendering pipeline not started yet'}</span>
+                  </div>
+                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
+                    <span className={styles.statusLabel}>Voiceover</span>
+                    <span className={styles.statusValue}>{video?.voiceoverUrl ?? 'Will appear after orchestration'}</span>
+                  </div>
+                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
+                    <span className={styles.statusLabel}>Subtitles</span>
+                    <span className={styles.statusValue}>{video?.subtitlesUrl ?? 'Will appear after orchestration'}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
     </main>
+  );
+}
+
+// ─── Outer page (loads data, provides context) ────────────────────────────────
+
+export default function CreateVideoPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [providers, setProviders] = useState<readonly ProviderDefinition[]>([]);
+
+  useEffect(() => {
+    let isActive = true;
+    void loadCurrentUser(router)
+      .then((session) => {
+        if (!isActive || !session) return;
+        setCurrentUser(session);
+      })
+      .catch(() => undefined);
+
+    void loadProviders(router)
+      .then((providerList) => {
+        if (!isActive || !providerList) return;
+        setProviders(providerList);
+      })
+      .catch(() => undefined);
+
+    return () => { isActive = false; };
+  }, [router]);
+
+  return (
+    <CreateVideoProvider
+      router={router}
+      initialCurrentUser={currentUser}
+      initialProviders={providers}
+    >
+      <CreateVideoInner />
+    </CreateVideoProvider>
   );
 }

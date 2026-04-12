@@ -1,9 +1,9 @@
-import { UserPlan, VideoAspectRatio, VideoGenerationStep } from '@reevio/types';
+import { UserPlan, UserRole, VideoAspectRatio, VideoGenerationStep } from '@reevio/types';
 import { JobStatus } from '../job/job.types';
 import { VideoProviderName } from '../provider/provider.types';
 import { VideoStatus } from '../video/video.types';
 
-type PrismaVideoProvider = 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO';
+type PrismaVideoProvider = 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
 type PrismaVideoStatus = 'DRAFT' | 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 type PrismaJobStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 type PrismaJobStep =
@@ -14,6 +14,7 @@ type PrismaJobStep =
   | 'GENERATE_VIDEO'
   | 'SAVE_RESULT';
 type PrismaUserPlan = 'FREE' | 'PRO' | 'PREMIUM';
+type PrismaUserRole = 'MEMBER' | 'ADMIN';
 
 const PRISMA_VIDEO_PROVIDER_BY_APP: Record<VideoProviderName, PrismaVideoProvider> = {
   remotion: 'REMOTION',
@@ -21,6 +22,7 @@ const PRISMA_VIDEO_PROVIDER_BY_APP: Record<VideoProviderName, PrismaVideoProvide
   grok: 'GROK',
   flow: 'FLOW',
   veo: 'VEO',
+  gemini: 'GEMINI',
 };
 
 const APP_VIDEO_PROVIDER_BY_PRISMA: Record<PrismaVideoProvider, VideoProviderName> = {
@@ -29,6 +31,7 @@ const APP_VIDEO_PROVIDER_BY_PRISMA: Record<PrismaVideoProvider, VideoProviderNam
   GROK: 'grok',
   FLOW: 'flow',
   VEO: 'veo',
+  GEMINI: 'gemini',
 };
 
 const APP_VIDEO_STATUS_BY_PRISMA: Record<PrismaVideoStatus, VideoStatus> = {
@@ -59,6 +62,11 @@ const APP_USER_PLAN_BY_PRISMA: Record<PrismaUserPlan, UserPlan> = {
   FREE: 'free',
   PRO: 'pro',
   PREMIUM: 'premium',
+};
+
+const APP_USER_ROLE_BY_PRISMA: Record<PrismaUserRole, UserRole> = {
+  MEMBER: 'member',
+  ADMIN: 'admin',
 };
 
 export function toPrismaVideoProvider(providerName: VideoProviderName): PrismaVideoProvider {
@@ -126,4 +134,14 @@ export function toAppUserPlan(plan: string): UserPlan {
   }
 
   return mappedPlan;
+}
+
+export function toAppUserRole(role: string): UserRole {
+  const mappedRole = APP_USER_ROLE_BY_PRISMA[role as PrismaUserRole];
+
+  if (!mappedRole) {
+    throw new Error(`Unsupported persisted user role "${role}".`);
+  }
+
+  return mappedRole;
 }

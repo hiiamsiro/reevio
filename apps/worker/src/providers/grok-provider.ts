@@ -33,6 +33,7 @@ export class GrokProvider implements VideoProvider {
       url: outputUrl,
       previewUrl: outputUrl,
       durationInSeconds: Math.max(input.orchestratedPlan.durationInSeconds - 1, 6),
+      artifactKind: 'json',
     };
   }
 }

@@ -1,17 +1,21 @@
 import { PrismaClient } from '@prisma/client';
 import { Worker } from 'bullmq';
+import Redis from 'ioredis';
 import { VideoGenerationJobData, VIDEO_GENERATION_QUEUE_NAME } from '@reevio/types';
 import 'reflect-metadata';
 import { validateEnv } from './config/validate-env';
 import { processVideoGenerationJob } from './pipeline/process-video-generation-job';
+import { emitVideoCompletedEvent } from './pipeline/video-events';
 
 async function main(): Promise<void> {
   const env = validateEnv(process.env);
   const prismaClient = new PrismaClient();
+  const redisPublisher = new Redis(env.REDIS_URL);
+
   const worker = new Worker<VideoGenerationJobData>(
     VIDEO_GENERATION_QUEUE_NAME,
     async (job) => {
-      await processVideoGenerationJob(prismaClient, job.data, job.attemptsMade, job.opts.attempts ?? 1);
+      await processVideoGenerationJob(prismaClient, job.data, job.attemptsMade, job.opts.attempts ?? 1, redisPublisher);
     },
     {
       connection: {
@@ -35,6 +39,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (): Promise<void> => {
     await worker.close();
+    await redisPublisher.quit();
     await prismaClient.$disconnect();
     process.exit(0);
   };

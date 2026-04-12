@@ -16,7 +16,7 @@ export function BulkGenerationPanel({
     <section className={styles.toolPanel} aria-labelledby="bulk-generation-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 28</p>
+          <p className={styles.sectionEyebrow}>Batch mode</p>
           <h3 className={styles.toolTitle} id="bulk-generation-title">
             Bulk generation
           </h3>
@@ -55,7 +55,7 @@ export function BulkGenerationPanel({
         type="file"
       />
 
-      <p className={styles.toolHint}>Phase 39: retry failed steps only from the current bulk run.</p>
+      <p className={styles.toolHint}>Retry only the failed items from the current bulk run.</p>
 
       <div className={styles.progressList}>
         {bulkJobs.length === 0 ? (

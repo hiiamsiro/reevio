@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
+import Redis from 'ioredis';
 import {
   BuiltScene,
   GeneratedImageAsset,
@@ -15,12 +16,13 @@ import { createStorageService } from '../storage/storage.factory';
 import { getCachedVideoPipelineState } from './video-cache';
 import { generateSubtitles } from '../voice/generate-subtitles';
 import { generateTtsTrack } from '../voice/generate-tts';
+import { emitVideoCompletedEvent, type VideoCompletedEvent } from './video-events';
 
 interface PersistedJobWithVideo {
   readonly id: string;
   readonly userId: string;
   readonly videoId: string;
-  readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO';
+  readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
   readonly status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   readonly step:
     | 'PARSE_PROMPT'
@@ -34,15 +36,23 @@ interface PersistedJobWithVideo {
     readonly id: string;
     readonly prompt: string;
     readonly aspectRatio: string;
-    readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO';
+    readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
   };
+}
+
+export interface VideoStepEvent {
+  readonly event: 'video.step';
+  readonly videoId: string;
+  readonly userId: string;
+  readonly step: PersistedJobWithVideo['step'];
 }
 
 export async function processVideoGenerationJob(
   prismaClient: PrismaClient,
   jobData: VideoGenerationJobData,
   attemptsMade: number,
-  maxAttempts: number
+  maxAttempts: number,
+  redis: Redis
 ): Promise<void> {
   const persistedJob = await prismaClient.job.findUnique({
     where: {
@@ -84,12 +94,23 @@ export async function processVideoGenerationJob(
     },
   });
 
+  // Emit PARSE_PROMPT step event
+  await redis.publish(
+    'video:events',
+    JSON.stringify({
+      event: 'video.step',
+      videoId: persistedJob.videoId,
+      userId: persistedJob.userId,
+      step: 'PARSE_PROMPT',
+    })
+  );
+
   try {
     const storageService = createStorageService();
     const cachedVideoPipelineState = await getCachedVideoPipelineState(prismaClient, jobData);
     const parsedPrompt = cachedVideoPipelineState?.parsedPrompt ?? (await extractData(jobData.prompt));
 
-    await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION');
+    await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION', redis, persistedJob.userId, persistedJob.videoId);
     const orchestratedPlan =
       cachedVideoPipelineState?.orchestratedPlan ??
       (await createOrchestratedPlan(parsedPrompt, jobData));
@@ -101,19 +122,22 @@ export async function processVideoGenerationJob(
       cachedVideoPipelineState?.subtitlesUrl ??
       (await generateSubtitles(jobData.videoId, orchestratedPlan.subtitleLines, storageService));
 
-    await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES');
+    await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES', redis, persistedJob.userId, persistedJob.videoId);
     const generatedAssets =
       cachedVideoPipelineState?.generatedAssets ??
       (await createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId, storageService));
 
-    await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES');
+    await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES', redis, persistedJob.userId, persistedJob.videoId);
     const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
 
-    await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO');
+    await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO', redis, persistedJob.userId, persistedJob.videoId);
     const videoResult = await generateVideoResult(providerFactory, jobData, orchestratedPlan, builtScenes, voiceoverUrl, subtitlesUrl);
-    await storageService.compressJsonArtifact(videoResult.url);
 
-    await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT');
+    if (videoResult.artifactKind === 'json') {
+      await storageService.compressJsonArtifact(videoResult.url);
+    }
+
+    await updateJobStep(prismaClient, persistedJob.id, 'SAVE_RESULT', redis, persistedJob.userId, persistedJob.videoId);
     await savePipelineResult(
       prismaClient,
       persistedJob,
@@ -123,13 +147,14 @@ export async function processVideoGenerationJob(
       builtScenes,
       voiceoverUrl,
       subtitlesUrl,
-      videoResult
+      videoResult,
+      redis
     );
   } catch (error: unknown) {
     const errorMessage = getErrorMessage(error);
     const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
 
-    await handlePipelineFailure(prismaClient, persistedJob, errorMessage, isFinalAttempt);
+    await handlePipelineFailure(prismaClient, persistedJob, errorMessage, isFinalAttempt, redis);
 
     throw error;
   }
@@ -191,7 +216,8 @@ async function savePipelineResult(
   builtScenes: BuiltScene[],
   voiceoverUrl: string,
   subtitlesUrl: string,
-  videoResult: VideoGenerationResult
+  videoResult: VideoGenerationResult,
+  redis: Redis
 ): Promise<void> {
   const videoMetadata = {
     durationInSeconds: videoResult.durationInSeconds,
@@ -233,6 +259,19 @@ async function savePipelineResult(
       completedAt: new Date(),
     },
   });
+
+  const completedEvent: VideoCompletedEvent = {
+    event: 'video.completed',
+    videoId: persistedJob.videoId,
+    userId: persistedJob.userId,
+    status: 'COMPLETED',
+    outputUrl: videoResult.url,
+    previewUrl: videoResult.previewUrl,
+    errorCode: null,
+    errorMessage: null,
+  };
+
+  await emitVideoCompletedEvent(redis, completedEvent);
 }
 
 async function updateJobStep(
@@ -243,7 +282,10 @@ async function updateJobStep(
     | 'GENERATE_IMAGES'
     | 'BUILD_SCENES'
     | 'GENERATE_VIDEO'
-    | 'SAVE_RESULT'
+    | 'SAVE_RESULT',
+  redis: Redis,
+  userId: string,
+  videoId: string
 ): Promise<void> {
   await prismaClient.job.update({
     where: {
@@ -253,13 +295,23 @@ async function updateJobStep(
       step,
     },
   });
+
+  const stepEvent: VideoStepEvent = {
+    event: 'video.step',
+    videoId,
+    userId,
+    step,
+  };
+
+  await redis.publish('video:events', JSON.stringify(stepEvent));
 }
 
 async function handlePipelineFailure(
   prismaClient: PrismaClient,
   persistedJob: PersistedJobWithVideo,
   errorMessage: string,
-  isFinalAttempt: boolean
+  isFinalAttempt: boolean,
+  redis: Redis
 ): Promise<void> {
   if (!isFinalAttempt) {
     await prismaClient.job.update({
@@ -338,6 +390,19 @@ async function handlePipelineFailure(
       },
     });
   });
+
+  const failedEvent: VideoCompletedEvent = {
+    event: 'video.failed',
+    videoId: persistedJob.videoId,
+    userId: persistedJob.userId,
+    status: 'FAILED',
+    outputUrl: null,
+    previewUrl: null,
+    errorCode: 'PIPELINE_FAILED',
+    errorMessage,
+  };
+
+  await emitVideoCompletedEvent(redis, failedEvent);
 }
 
 function getErrorMessage(error: unknown): string {

@@ -1,17 +1,17 @@
 :root {
-  --color-bg: #050816;
-  --color-surface: #0a0e1f;
-  --color-surface-elevated: #12182f;
-  --color-border-soft: rgba(151, 163, 255, 0.16);
-  --color-border-strong: rgba(151, 163, 255, 0.24);
-  --color-text-primary: #f5f7ff;
-  --color-text-secondary: #b2bddf;
-  --color-text-muted: #7d89ae;
-  --color-accent-cyan: #74e6ff;
-  --color-accent-blue: #7a7dff;
-  --color-accent-orange: #ff8c6b;
-  --color-accent-pink: #ff5db1;
-  --color-danger: #ff7d91;
+  --color-bg: #070605;
+  --color-surface: #100d0b;
+  --color-surface-elevated: #16120f;
+  --color-border-soft: rgba(246, 239, 227, 0.1);
+  --color-border-strong: rgba(246, 239, 227, 0.16);
+  --color-text-primary: #f6efe3;
+  --color-text-secondary: #d7cab6;
+  --color-text-muted: #a99e90;
+  --color-accent-cyan: #e0b55f;
+  --color-accent-blue: #c79a3b;
+  --color-accent-orange: #d8c6a1;
+  --color-accent-pink: #f0d398;
+  --color-danger: #fca5a5;
   --shadow-soft: 0 24px 60px rgba(2, 6, 20, 0.3);
   --shadow-card: 0 18px 32px rgba(2, 6, 20, 0.24);
   --shadow-panel: 0 30px 80px rgba(2, 6, 20, 0.36);
@@ -58,13 +58,13 @@ body {
   font-size: var(--type-step-0);
   color: var(--color-text-primary);
   background:
-    radial-gradient(circle at top left, rgba(54, 214, 255, 0.15), transparent 24%),
-    radial-gradient(circle at top right, rgba(140, 93, 255, 0.16), transparent 28%),
-    linear-gradient(180deg, #050816, #070b18 45%, #050816);
+    radial-gradient(circle at top left, rgba(199, 154, 59, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(246, 239, 227, 0.05), transparent 28%),
+    linear-gradient(180deg, #030302, #070605 24%, #0b0908 100%);
 }
 
 ::selection {
-  background: rgba(116, 230, 255, 0.28);
+  background: rgba(199, 154, 59, 0.24);
   color: var(--color-text-primary);
 }
 

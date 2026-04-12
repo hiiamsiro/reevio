@@ -31,6 +31,7 @@ export class RemotionProvider implements VideoProvider {
       durationInSeconds:
         input.builtScenes.reduce((total, scene) => total + scene.durationInSeconds, 0) ||
         input.orchestratedPlan.durationInSeconds,
+      artifactKind: 'json',
     };
   }
 }

@@ -6,7 +6,7 @@ export function TemplateGalleryPanel({ videoTemplates, onApplyTemplate }: Templa
     <section className={styles.toolPanel} aria-labelledby="template-system-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 34</p>
+          <p className={styles.sectionEyebrow}>Templates</p>
           <h3 className={styles.toolTitle} id="template-system-title">
             Template gallery
           </h3>

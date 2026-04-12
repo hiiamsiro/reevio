@@ -51,6 +51,7 @@ export class AuthService {
           email: normalizedEmail,
           passwordHash,
           plan: 'FREE',
+          role: 'MEMBER',
           credits: AUTH_DEFAULT_CREDITS,
         },
       });

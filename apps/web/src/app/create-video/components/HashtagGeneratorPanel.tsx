@@ -12,7 +12,7 @@ export function HashtagGeneratorPanel({
     <section className={styles.toolPanel} aria-labelledby="hashtag-generator-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 30</p>
+          <p className={styles.sectionEyebrow}>Hashtags</p>
           <h3 className={styles.toolTitle} id="hashtag-generator-title">
             Hashtag generator
           </h3>

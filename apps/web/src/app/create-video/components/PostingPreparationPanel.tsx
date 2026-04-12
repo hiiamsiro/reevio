@@ -12,7 +12,7 @@ export function PostingPreparationPanel({
     <section className={styles.toolPanel} aria-labelledby="posting-prep-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 29</p>
+          <p className={styles.sectionEyebrow}>Posting</p>
           <h3 className={styles.toolTitle} id="posting-prep-title">
             Posting preparation
           </h3>

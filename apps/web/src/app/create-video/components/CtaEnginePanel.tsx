@@ -14,15 +14,19 @@ export function CtaEnginePanel({
     <section className={styles.toolPanel} aria-labelledby="cta-engine-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 26</p>
+          <p className={styles.sectionEyebrow}>Step 3</p>
           <h3 className={styles.toolTitle} id="cta-engine-title">
-            CTA engine
+            Lock the CTA
           </h3>
         </div>
         <button className={styles.secondaryButton} onClick={onRegenerateCta} type="button">
-          Regenerate CTA
+          Refresh CTA
         </button>
       </div>
+
+      <p className={styles.sectionSummary}>
+        End with one clear action so the viewer knows exactly what to do after watching.
+      </p>
 
       <div className={styles.segmentGroup} aria-label="CTA type">
         {CTA_TYPES.map((type) => {
@@ -58,6 +62,8 @@ export function CtaEnginePanel({
           onChange={(event) => onCtaTextChange(event.target.value)}
         />
       </div>
+
+      <p className={styles.toolHint}>Keep it short, concrete, and easy to act on.</p>
     </section>
   );
 }

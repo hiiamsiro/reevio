@@ -20,6 +20,15 @@ export class LocalStorageService implements StorageService {
     return this.toPublicUrl(relativePath);
   }
 
+  public async saveBinaryFile(relativePath: string, content: Uint8Array): Promise<string> {
+    const absolutePath = join(this.storagePath, relativePath);
+
+    await mkdir(dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, content);
+
+    return this.toPublicUrl(relativePath);
+  }
+
   public async savePlaceholderImage(relativePath: string): Promise<string> {
     const absolutePath = join(this.storagePath, relativePath);
 

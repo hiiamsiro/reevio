@@ -10,6 +10,6 @@ export interface GenerateVideoInput {
 }
 
 export interface VideoProvider {
-  readonly name: 'remotion' | 'topview' | 'grok' | 'flow' | 'veo';
+  readonly name: 'remotion' | 'topview' | 'grok' | 'flow' | 'veo' | 'gemini';
   generateVideo(input: GenerateVideoInput): Promise<VideoGenerationResult>;
 }

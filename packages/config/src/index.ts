@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export const videoProviderSchema = z.enum(['remotion', 'topview', 'grok', 'flow', 'veo']);
+export const videoProviderSchema = z.enum([
+  'remotion',
+  'topview',
+  'grok',
+  'flow',
+  'veo',
+  'gemini',
+]);
 
 export const videoRenderParamsSchema = z.object({
   script: z.string().optional(),
@@ -65,6 +72,7 @@ export const envSchema = z.object({
   GROK_API_KEY: z.string().optional(),
   GOOGLE_FLOW_API_KEY: z.string().optional(),
   VEO_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 
   // Webhooks
   WEBHOOK_SECRET: z.string().optional(),

@@ -5,6 +5,7 @@ export function HookGeneratorPanel({
   hookSource,
   onHookSourceChange,
   onGenerateHooks,
+  onUseCurrentBrief,
   selectedHook,
   hookOptions,
   selectedHookId,
@@ -17,19 +18,29 @@ export function HookGeneratorPanel({
     <section className={styles.toolPanel} aria-labelledby="hook-generator-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 25</p>
+          <p className={styles.sectionEyebrow}>Step 2</p>
           <h3 className={styles.toolTitle} id="hook-generator-title">
-            Viral hook generator
+            Pick the opening hook
           </h3>
         </div>
-        <button className={styles.secondaryButton} onClick={onGenerateHooks} type="button">
-          Regenerate
-        </button>
+        <div className={styles.progressActions}>
+          <button className={styles.ghostButton} onClick={onUseCurrentBrief} type="button">
+            Use current brief
+          </button>
+          <button className={styles.secondaryButton} onClick={onGenerateHooks} type="button">
+            Refresh ideas
+          </button>
+        </div>
       </div>
+
+      <p className={styles.sectionSummary}>
+        Keep this focused on the single promise, pain point, or surprise you want in the first
+        three seconds.
+      </p>
 
       <div className={styles.fieldGroup}>
         <label className={styles.label} htmlFor="hookSource">
-          Product description
+          Hook focus
         </label>
         <textarea
           id="hookSource"
@@ -41,14 +52,16 @@ export function HookGeneratorPanel({
 
       <div className={styles.toolActions}>
         <button className={styles.secondaryButton} onClick={onGenerateHooks} type="button">
-          Generate 10 hooks
+          Generate hook options
         </button>
-        <span className={styles.toolHint}>Hooks stay short, emotional, and curiosity-driven.</span>
+        <span className={styles.toolHint}>
+          You do not need to repeat the full brief here. A shorter angle usually works better.
+        </span>
       </div>
 
       {selectedHook ? (
         <div className={styles.selectedHookCard}>
-          <span className={styles.selectedHookLabel}>Selected hook</span>
+          <span className={styles.selectedHookLabel}>Hook locked</span>
           <strong>{selectedHook.text}</strong>
         </div>
       ) : null}

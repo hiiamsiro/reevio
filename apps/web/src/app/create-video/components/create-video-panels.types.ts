@@ -14,6 +14,7 @@ export interface HookGeneratorPanelProps {
   readonly hookSource: string;
   readonly onHookSourceChange: (value: string) => void;
   readonly onGenerateHooks: () => void;
+  readonly onUseCurrentBrief: () => void;
   readonly selectedHook: HookOption | null;
   readonly hookOptions: readonly HookOption[];
   readonly selectedHookId: string | null;

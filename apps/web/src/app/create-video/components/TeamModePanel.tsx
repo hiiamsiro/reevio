@@ -1,5 +1,11 @@
 import type { TeamModePanelProps } from './create-video-panels.types';
+import { CustomSelect, type CustomSelectOption } from './CustomSelect';
 import styles from '../page.module.css';
+
+const roleOptions: readonly CustomSelectOption[] = [
+  { value: 'editor', label: 'Editor', meta: 'Can prepare and publish' },
+  { value: 'owner', label: 'Owner', meta: 'Full workspace control' },
+];
 
 export function TeamModePanel({
   inviteEmail,
@@ -14,7 +20,7 @@ export function TeamModePanel({
     <section className={styles.toolPanel} aria-labelledby="team-mode-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 35</p>
+          <p className={styles.sectionEyebrow}>Team</p>
           <h3 className={styles.toolTitle} id="team-mode-title">
             Team mode
           </h3>
@@ -28,14 +34,11 @@ export function TeamModePanel({
           placeholder="teammate@example.com"
           value={inviteEmail}
         />
-        <select
-          className={styles.select}
-          onChange={(event) => onInviteRoleChange(event.target.value as 'owner' | 'editor')}
+        <CustomSelect
+          options={roleOptions}
+          onValueChange={(value) => onInviteRoleChange(value as 'owner' | 'editor')}
           value={inviteRole}
-        >
-          <option value="editor">Editor</option>
-          <option value="owner">Owner</option>
-        </select>
+        />
       </div>
 
       <button className={styles.secondaryButton} onClick={onInviteMember} type="button">

@@ -13,7 +13,7 @@ export function ExportPanel({
     <section className={styles.toolPanel} aria-labelledby="export-engine-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 27</p>
+          <p className={styles.sectionEyebrow}>Export</p>
           <h3 className={styles.toolTitle} id="export-engine-title">
             Multi-format export
           </h3>

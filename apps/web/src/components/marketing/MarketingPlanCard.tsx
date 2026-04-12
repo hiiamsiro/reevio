@@ -3,7 +3,9 @@ import styles from '@/app/home.module.css';
 
 export function MarketingPlanCard({ plan }: MarketingPlanCardProps) {
   return (
-    <article className={`${styles.pricingCard} ${plan.featured ? styles.pricingFeatured : ''}`}>
+    <article
+      className={`${styles.pricingCard} ${plan.featured ? styles.pricingFeatured : ""}`}
+    >
       <div className={styles.pricingTop}>
         <div>
           <h3>{plan.name}</h3>

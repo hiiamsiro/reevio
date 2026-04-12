@@ -13,12 +13,18 @@ enum UserPlan {
   PREMIUM
 }
 
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
 enum VideoProvider {
   REMOTION
   TOPVIEW
   GROK
   FLOW
   VEO
+  GEMINI
 }
 
 enum VideoStatus {
@@ -57,6 +63,7 @@ model User {
   passwordHash String?
   name            String?
   plan            UserPlan         @default(FREE)
+  role            UserRole         @default(MEMBER)
   credits         Int              @default(0)
   videos          Video[]
   jobs            Job[]

@@ -16,9 +16,9 @@
 .backdrop {
   inset: 0;
   background:
-    radial-gradient(circle at 20% 18%, rgba(39, 208, 255, 0.18), transparent 24%),
-    radial-gradient(circle at 78% 18%, rgba(152, 84, 255, 0.18), transparent 22%),
-    radial-gradient(circle at 52% 76%, rgba(255, 112, 67, 0.18), transparent 20%);
+    radial-gradient(circle at 16% 10%, rgba(199, 154, 59, 0.14), transparent 22%),
+    radial-gradient(circle at 80% 16%, rgba(246, 239, 227, 0.05), transparent 24%),
+    radial-gradient(circle at 50% 72%, rgba(255, 222, 168, 0.05), transparent 30%);
 }
 
 .glowOne {
@@ -27,7 +27,7 @@
   width: 18rem;
   height: 18rem;
   border-radius: 50%;
-  background: rgba(98, 51, 255, 0.28);
+  background: rgba(199, 154, 59, 0.16);
 }
 
 .glowTwo {
@@ -36,7 +36,7 @@
   width: 19rem;
   height: 19rem;
   border-radius: 50%;
-  background: rgba(30, 200, 255, 0.22);
+  background: rgba(255, 227, 173, 0.09);
 }
 
 .shell {
@@ -53,7 +53,9 @@
 .plansSection,
 .statusCard {
   border: 1px solid var(--color-border-soft);
-  background: rgba(10, 14, 31, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 28%),
+    var(--color-surface);
   box-shadow: var(--shadow-panel);
   backdrop-filter: blur(18px);
 }
@@ -84,11 +86,11 @@
   height: 2.5rem;
   border-radius: 0.9rem;
   background:
-    linear-gradient(135deg, rgba(24, 245, 255, 0.92), rgba(114, 74, 255, 0.92)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent);
+    linear-gradient(180deg, rgba(255, 248, 235, 0.16), transparent 28%),
+    linear-gradient(180deg, #c79a3b, #8b651f);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 20px 40px rgba(70, 94, 255, 0.28);
+    0 20px 40px rgba(120, 88, 26, 0.24);
 }
 
 .brandName,
@@ -130,6 +132,7 @@
 }
 
 .navLink,
+.navButton,
 .primaryAction,
 .secondaryAction,
 .planButton {
@@ -141,6 +144,7 @@
 }
 
 .navLink,
+.navButton,
 .secondaryAction {
   padding: 0.75rem 1rem;
   border: 1px solid var(--color-border-soft);
@@ -150,6 +154,12 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.navButton {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .primaryAction,
 .planButton {
   min-height: 54px;
@@ -157,13 +167,17 @@
   border-radius: 999px;
   padding: 0.95rem 1.3rem;
   font-weight: 700;
-  color: #03111f;
-  background: linear-gradient(135deg, #74e6ff, #8a7dff 55%, #ff8c6b);
-  box-shadow: 0 18px 40px rgba(82, 136, 255, 0.34);
+  color: #130e09;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.18), transparent 30%),
+    linear-gradient(135deg, #f0d398, #c79a3b 55%, #8f6722);
+  box-shadow: 0 18px 40px rgba(120, 88, 26, 0.28);
 }
 
 .navLink:hover,
 .navLink:focus-visible,
+.navButton:hover,
+.navButton:focus-visible,
 .secondaryAction:hover,
 .secondaryAction:focus-visible,
 .primaryAction:hover,
@@ -252,8 +266,8 @@
 }
 
 .featured {
-  border-color: rgba(116, 230, 255, 0.42);
-  box-shadow: 0 0 0 1px rgba(116, 230, 255, 0.12);
+  border-color: rgba(199, 154, 59, 0.34);
+  box-shadow: 0 0 0 1px rgba(199, 154, 59, 0.08);
 }
 
 .planMeta {
@@ -303,12 +317,18 @@
 .secondaryAction:focus-visible,
 .primaryAction:focus-visible,
 .planButton:focus-visible {
-  outline: 2px solid rgba(116, 230, 255, 0.72);
+  outline: 2px solid rgba(224, 181, 95, 0.74);
   outline-offset: 3px;
 }
 
 .planButton:disabled {
   opacity: 0.75;
+  transform: none;
+}
+
+.navButton:disabled {
+  opacity: 0.75;
+  cursor: wait;
   transform: none;
 }
 
@@ -333,5 +353,247 @@
   .nav {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* Match landing page editorial tone */
+.page {
+  --landing-bg: #070605;
+  --landing-surface: #100d0b;
+  --landing-surface-strong: #16120f;
+  --landing-surface-raise: #1c1713;
+  --landing-text: #f6efe3;
+  --landing-muted: #a99e90;
+  --landing-line: rgba(246, 239, 227, 0.1);
+  --landing-line-strong: rgba(246, 239, 227, 0.16);
+  --landing-accent: #c79a3b;
+  --landing-accent-soft: rgba(199, 154, 59, 0.16);
+  --landing-accent-strong: #e0b55f;
+  background:
+    radial-gradient(circle at top center, rgba(199, 154, 59, 0.08), transparent 28%),
+    linear-gradient(180deg, #030302, #070605 24%, #0b0908 100%);
+  color: var(--landing-text);
+  font-family: var(--landing-font-body), var(--font-body), sans-serif;
+  isolation: isolate;
+  padding: 1.25rem var(--space-6) 5rem;
+}
+
+.backdrop,
+.gridLines,
+.glowOne,
+.glowTwo {
+  filter: none;
+}
+
+.backdrop {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(199, 154, 59, 0.14), transparent 22%),
+    radial-gradient(circle at 80% 16%, rgba(246, 239, 227, 0.05), transparent 24%),
+    radial-gradient(circle at 50% 72%, rgba(255, 222, 168, 0.05), transparent 30%),
+    linear-gradient(180deg, rgba(2, 2, 3, 0.24), rgba(2, 2, 3, 0.86));
+}
+
+.gridLines {
+  inset: 0;
+  opacity: 0.1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 144px 144px;
+  mask-image: linear-gradient(180deg, transparent, black 22%, black 78%, transparent);
+}
+
+.glowOne,
+.glowTwo {
+  filter: blur(110px);
+  border-radius: 999px;
+}
+
+.glowOne {
+  background: rgba(199, 154, 59, 0.16);
+}
+
+.glowTwo {
+  background: rgba(255, 227, 173, 0.09);
+}
+
+.shell {
+  max-width: 1220px;
+  gap: 1.2rem;
+}
+
+.nav,
+.hero,
+.plansSection,
+.statusCard,
+.planCard {
+  border: 1px solid var(--landing-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 28%),
+    var(--landing-surface);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  backdrop-filter: none;
+}
+
+.nav {
+  position: sticky;
+  top: 1rem;
+  z-index: var(--z-overlay);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent),
+    rgba(7, 7, 8, 0.96);
+}
+
+.hero,
+.plansSection {
+  border-radius: 1.6rem;
+}
+
+.brandMark {
+  border-radius: 0.8rem;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.16), transparent 28%),
+    linear-gradient(180deg, #c79a3b, #8b651f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 10px 22px rgba(125, 92, 28, 0.2);
+}
+
+.brandName,
+.title,
+.sectionTitle,
+.planName,
+.price,
+.statusValue {
+  color: var(--landing-text);
+  font-family: var(--landing-font-display), var(--font-display), serif;
+}
+
+.title,
+.sectionTitle,
+.price {
+  letter-spacing: -0.055em;
+  line-height: 0.94;
+}
+
+.title {
+  max-width: 10ch;
+  font-size: clamp(3.45rem, 7vw, 6.1rem);
+}
+
+.sectionTitle {
+  font-size: clamp(2.2rem, 4.2vw, 3.4rem);
+}
+
+.brandMeta,
+.subtitle,
+.sectionCopy,
+.planDescription,
+.statusLabel,
+.featureList,
+.creditsBadge {
+  color: var(--landing-muted);
+}
+
+.eyebrow {
+  color: var(--landing-accent-strong);
+  letter-spacing: 0.22em;
+}
+
+.navLink,
+.navButton {
+  color: #d7cab6;
+  font-size: 0.84rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  border-color: transparent;
+  background: transparent;
+}
+
+.navLink:hover,
+.navLink:focus-visible,
+.navButton:hover,
+.navButton:focus-visible {
+  color: var(--landing-text);
+}
+
+.secondaryAction {
+  border-color: var(--landing-line-strong);
+  color: var(--landing-text);
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 0.8rem;
+}
+
+.primaryAction,
+.planButton {
+  color: #130e09;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.18), transparent 30%),
+    linear-gradient(135deg, #f0d398, #c79a3b 55%, #8f6722);
+  box-shadow: 0 16px 34px rgba(120, 88, 26, 0.28);
+  border-radius: 0.8rem;
+}
+
+.secondaryAction:hover,
+.secondaryAction:focus-visible,
+.planCard:hover {
+  border-color: rgba(199, 154, 59, 0.34);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(199, 154, 59, 0.08);
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible,
+.planButton:hover,
+.planButton:focus-visible {
+  box-shadow: 0 20px 42px rgba(120, 88, 26, 0.34);
+}
+
+.statusCard,
+.planCard {
+  border-radius: 1.3rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent),
+    var(--landing-surface-strong);
+}
+
+.featured {
+  border-color: rgba(199, 154, 59, 0.34);
+  box-shadow:
+    0 24px 54px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(199, 154, 59, 0.08);
+}
+
+.planBadge,
+.creditsBadge {
+  border-color: rgba(255, 245, 230, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--landing-text);
+}
+
+.credits {
+  color: #f2deba;
+}
+
+.successMessage {
+  color: #f2deba;
+}
+
+.navLink:focus-visible,
+.navButton:focus-visible,
+.secondaryAction:focus-visible,
+.primaryAction:focus-visible,
+.planButton:focus-visible {
+  outline: 2px solid rgba(224, 181, 95, 0.74);
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 1rem 1rem 4rem;
   }
 }

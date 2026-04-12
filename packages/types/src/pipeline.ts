@@ -97,4 +97,5 @@ export interface VideoGenerationResult {
   readonly url: string;
   readonly previewUrl: string;
   readonly durationInSeconds: number;
+  readonly artifactKind: 'json' | 'video';
 }

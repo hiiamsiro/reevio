@@ -2,6 +2,7 @@
 
 import type { ApiResponse } from '@reevio/types';
 import Link from 'next/link';
+import { Jost, Playfair_Display } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { BillingPlanCard } from '@/components/pricing';
@@ -12,6 +13,16 @@ import type {
 } from './page.types';
 import styles from './page.module.css';
 
+const pricingDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--landing-font-display',
+});
+
+const pricingBody = Jost({
+  subsets: ['latin'],
+  variable: '--landing-font-body',
+});
+
 export default function PricingPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -19,6 +30,7 @@ export default function PricingPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -124,9 +136,34 @@ export default function PricingPage() {
     }
   };
 
+  const handleLogout = async (): Promise<void> => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to log out.');
+      }
+
+      router.replace('/login');
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${pricingDisplay.variable} ${pricingBody.variable}`}>
       <div className={styles.backdrop} />
+      <div className={styles.gridLines} />
       <div className={styles.glowOne} />
       <div className={styles.glowTwo} />
 
@@ -147,6 +184,14 @@ export default function PricingPage() {
             <span className={styles.creditsBadge}>
               {currentUser ? `${currentUser.credits} credits available` : 'Loading credits'}
             </span>
+            <button
+              className={styles.navButton}
+              disabled={isLoggingOut}
+              onClick={() => void handleLogout()}
+              type="button"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </button>
           </div>
         </header>
 

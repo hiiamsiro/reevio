@@ -1,4 +1,5 @@
 import { ProviderFactory } from './provider-factory';
+import { GeminiProvider } from './gemini-provider';
 import { GoogleFlowProvider } from './google-flow-provider';
 import { GrokProvider } from './grok-provider';
 import { RemotionProvider } from './remotion-provider';
@@ -15,5 +16,6 @@ export function createProviderFactory(): ProviderFactory {
     new GrokProvider(process.env['GROK_API_KEY'], storageService),
     new GoogleFlowProvider(process.env['GOOGLE_FLOW_API_KEY'], storageService),
     new VeoProvider(process.env['VEO_API_KEY'], storageService),
+    new GeminiProvider(process.env['GEMINI_API_KEY'], storageService),
   ]);
 }

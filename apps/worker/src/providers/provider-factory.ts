@@ -2,6 +2,7 @@ import { VideoProvider } from './video-provider.types';
 
 const PROVIDER_FALLBACK_CHAINS: Record<VideoProvider['name'], VideoProvider['name'][]> = {
   veo: ['veo', 'topview', 'grok', 'remotion'],
+  gemini: ['gemini'],
   topview: ['topview', 'grok', 'remotion'],
   grok: ['grok', 'remotion'],
   remotion: ['remotion'],

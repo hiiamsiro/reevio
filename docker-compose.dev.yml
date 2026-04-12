@@ -35,9 +35,9 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: reevio-web
     environment:
-      CHOKIDAR_USEPOLLING: 'true'
-      WATCHPACK_POLLING: 'true'
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      API_URL: http://api:4000
+      AUTH_SECRET: change-me-in-development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/reevio
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
@@ -82,12 +82,18 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/reevio
       REDIS_URL: redis://redis:6379
       API_URL: http://localhost:4000
+      AUTH_SECRET: change-me-in-development
       STORAGE_DRIVER: local
       STORAGE_PATH: /app/storage
       STORAGE_PUBLIC_BASE_URL: http://localhost:4000
       NODE_ENV: development
       PORT: '4000'
       NEXT_PUBLIC_API_URL: http://localhost:3000
+      TOPVIEW_API_KEY: ${TOPVIEW_API_KEY:-}
+      GROK_API_KEY: ${GROK_API_KEY:-}
+      GOOGLE_FLOW_API_KEY: ${GOOGLE_FLOW_API_KEY:-}
+      VEO_API_KEY: ${VEO_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
@@ -122,11 +128,16 @@ services:
       TSC_WATCHDIRECTORY: RecursiveDirectoryUsingDynamicPriorityPolling
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/reevio
-      API_URL: http://localhost:4000
+      API_URL: http://api:4000
       STORAGE_DRIVER: local
       STORAGE_PATH: /app/storage
       STORAGE_PUBLIC_BASE_URL: http://localhost:4000
       NODE_ENV: development
+      TOPVIEW_API_KEY: ${TOPVIEW_API_KEY:-}
+      GROK_API_KEY: ${GROK_API_KEY:-}
+      GOOGLE_FLOW_API_KEY: ${GOOGLE_FLOW_API_KEY:-}
+      VEO_API_KEY: ${VEO_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - ./apps/worker:/app/apps/worker
       - ./packages:/app/packages

@@ -2,9 +2,20 @@
 
 import type { ApiResponse, AuthSession } from '@reevio/types';
 import Link from 'next/link';
+import { Jost, Playfair_Display } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import styles from './auth-form.module.css';
+
+const authDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--landing-font-display',
+});
+
+const authBody = Jost({
+  subsets: ['latin'],
+  variable: '--landing-font-body',
+});
 
 type BrowserAuthSession = Pick<AuthSession, 'expiresAt'> & {
   readonly user: Pick<AuthSession['user'], 'email'>;
@@ -67,8 +78,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   };
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${authDisplay.variable} ${authBody.variable}`}>
       <div className={styles.backdrop} />
+      <div className={styles.gridLines} />
       <div className={styles.glowOne} />
       <div className={styles.glowTwo} />
 

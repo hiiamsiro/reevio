@@ -1,6 +1,6 @@
 // ─── Video Providers ─────────────────────────────────────────────────────────
 
-export type VideoProvider = 'remotion' | 'topview' | 'grok' | 'flow' | 'veo';
+export type VideoProvider = 'remotion' | 'topview' | 'grok' | 'flow' | 'veo' | 'gemini';
 
 export interface VideoProviderConfig {
   provider: VideoProvider;
@@ -76,12 +76,14 @@ export interface User {
   email: string;
   name?: string;
   plan: UserPlan;
+  role: UserRole;
   credits: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export type UserPlan = 'free' | 'pro' | 'premium';
+export type UserRole = 'member' | 'admin';
 
 export interface AuthSession {
   user: User;

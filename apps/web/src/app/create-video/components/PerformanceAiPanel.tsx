@@ -14,7 +14,7 @@ export function PerformanceAiPanel({
     <section className={styles.toolPanel} aria-labelledby="performance-ai-title">
       <div className={styles.toolHeader}>
         <div>
-          <p className={styles.sectionEyebrow}>Phase 42</p>
+          <p className={styles.sectionEyebrow}>Signals</p>
           <h3 className={styles.toolTitle} id="performance-ai-title">
             Performance AI
           </h3>
