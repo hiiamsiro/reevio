@@ -1,6 +1,6 @@
 ﻿# Reevio
 
-AI-powered affiliate video generation platform. Built as a TypeScript monorepo with three independent apps: a Next.js frontend, a NestJS API, and a BullMQ background worker.
+AI-powered short-form video generation studio. Built as a TypeScript monorepo with three independent apps: a Next.js frontend, a NestJS API, and a BullMQ background worker.
 
 ## Tech Stack
 
@@ -133,7 +133,7 @@ packages/
 
 ## Environment Variables
 
-Use `.env.example` for local development and rename it to `.env`. Use `.env.production.example` as a reference when preparing a production deployment. Docker Compose already sets the core development variables for containerized services.
+Use `.env.example` for local development and rename it to `.env`. Docker Compose already sets the core development variables for containerized services.
 
 Key variables:
 

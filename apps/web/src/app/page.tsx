@@ -334,7 +334,6 @@ export default function HomePage() {
                     <span className={styles.previewSceneChip}>Offer reveal</span>
                     <span className={styles.previewSceneChip}>Closing CTA</span>
                   </div>
-
                 </div>
 
                 <div className={styles.previewInfo}>

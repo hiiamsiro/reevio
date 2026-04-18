@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@reevio/types';
+import type { User, VideoGenerationStep } from '@reevio/types';
 import type { ExportFormatDefinition } from './content-studio';
 
 export interface VideoResponse {
@@ -15,6 +15,9 @@ export interface VideoResponse {
   readonly errorMessage: string | null;
   readonly voiceoverUrl?: string | null;
   readonly subtitlesUrl?: string | null;
+  readonly currentStep?: VideoGenerationStep | null;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
 }
 
 export interface ProviderDefinition {
@@ -32,30 +35,6 @@ export interface GenerateVideoResponse {
   readonly video: VideoResponse;
   readonly remainingCredits: number;
   readonly creditsCharged: boolean;
-}
-
-export type BulkJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
-
-export interface BulkJobItem {
-  readonly id: string;
-  readonly productDescription: string;
-  readonly videoId: string | null;
-  readonly status: BulkJobStatus;
-  readonly outputUrl: string | null;
-  readonly errorMessage: string | null;
-}
-
-export interface TeamMember {
-  readonly id: string;
-  readonly email: string;
-  readonly role: 'owner' | 'editor';
-}
-
-export type WatermarkPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-
-export interface PerformanceInsight {
-  readonly health: string;
-  readonly suggestion: string;
 }
 
 export interface AppRouter {
@@ -90,17 +69,9 @@ export interface FetchResourceInput {
 export interface CreateExportBriefInput {
   readonly format: ExportFormatDefinition;
   readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string | null;
 }
 
 export interface DownloadTextFileInput {
   readonly content: string;
   readonly fileName: string;
-}
-
-export interface CreatePerformanceInsightInput {
-  readonly views: string;
-  readonly likes: string;
-  readonly watchTime: string;
 }

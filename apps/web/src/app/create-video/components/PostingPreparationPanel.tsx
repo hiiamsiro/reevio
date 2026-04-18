@@ -14,7 +14,7 @@ export function PostingPreparationPanel({
         <div>
           <p className={styles.sectionEyebrow}>Posting</p>
           <h3 className={styles.toolTitle} id="posting-prep-title">
-            Posting preparation
+            Caption package
           </h3>
         </div>
         <button className={styles.secondaryButton} onClick={onRegeneratePostingPreparation} type="button">
@@ -67,7 +67,7 @@ export function PostingPreparationPanel({
       <div className={styles.progressCard}>
         <div className={styles.copyBar}>
           <label className={styles.label} htmlFor="postingHashtags">
-            Hashtags
+            Suggested tags
           </label>
           <button
             className={styles.ghostButton}

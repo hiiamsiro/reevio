@@ -17,6 +17,9 @@ export function selectBestVariations(
       prompt: bestVariation.prompt,
       url: bestVariation.url,
       score: bestVariation.score,
+      provider: 'pexels',
+      sourceKind: 'stock',
+      fallbackDepth: 0,
     };
   });
 }

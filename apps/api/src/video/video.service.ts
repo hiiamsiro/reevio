@@ -17,42 +17,15 @@ export class VideoService {
   ) {}
 
   public async createVideo(input: CreateVideoInput): Promise<VideoCreationResult> {
-    const providerDefinition = this.providerService.getProvider(input.provider);
+    const providerDefinition = this.providerService.getCreatableProvider(input.provider);
+    return this.createFreshVideo(input, providerDefinition.creditCost);
+  }
 
-    const reusableVideo = await this.prismaService.video.findFirst({
-      where: {
-        userId: input.userId,
-        prompt: input.prompt,
-        provider: toPrismaVideoProvider(input.provider),
-        aspectRatio: input.aspectRatio,
-        status: 'COMPLETED',
-        outputUrl: {
-          not: null,
-        },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-    });
+  private async createFreshVideo(
+    input: CreateVideoInput,
+    creditCost: number
+  ): Promise<VideoCreationResult> {
 
-    if (reusableVideo) {
-      const user = await this.prismaService.user.findUniqueOrThrow({
-        where: {
-          id: input.userId,
-        },
-        select: {
-          credits: true,
-        },
-      });
-
-      return {
-        video: toVideoRecord(reusableVideo),
-        remainingCredits: user.credits,
-        creditsCharged: false,
-      };
-    }
-
-    const creditCost = providerDefinition.creditCost;
     const { remainingCredits, videoRecord } = await this.prismaService.$transaction(
       async (transactionClient) => {
         const existingUser = await transactionClient.user.findUnique({
@@ -143,6 +116,7 @@ export class VideoService {
         id: videoId,
         userId,
       },
+      include: latestJobInclude,
     });
 
     if (!videoRecord) {
@@ -160,6 +134,7 @@ export class VideoService {
       orderBy: {
         createdAt: 'desc',
       },
+      include: latestJobInclude,
     });
 
     return videoRecords.map(toVideoRecord);
@@ -213,6 +188,18 @@ export class VideoService {
     });
   }
 }
+
+const latestJobInclude = {
+  jobs: {
+    orderBy: {
+      createdAt: 'desc' as const,
+    },
+    take: 1,
+    select: {
+      step: true,
+    },
+  },
+} as const;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {

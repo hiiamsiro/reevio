@@ -8,6 +8,26 @@ import {
   toProxyResponse,
 } from '@/lib/server-api';
 
+export async function GET(): Promise<NextResponse> {
+  const accessToken = await getSessionToken();
+
+  if (!accessToken) {
+    return createApiErrorResponse(401, 'Authentication is required.');
+  }
+
+  const response = await fetchApi({
+    path: '/videos',
+    method: 'GET',
+    accessToken,
+  });
+
+  if (response.status === 401) {
+    return createUnauthorizedApiErrorResponse();
+  }
+
+  return toProxyResponse(response, 'Failed to load render queue.');
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   const accessToken = await getSessionToken();
 

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/auth.decorator';
 import { AuthenticatedUser } from '../auth/auth.types';
+import { ProviderUnavailableError } from '../provider/provider.errors';
 import { InsufficientCreditsError, VideoNotFoundError } from './video.errors';
 import { generateVideoRequestSchema, videoIdParamSchema } from './video.schemas';
 import { VideoService } from './video.service';
@@ -48,6 +49,10 @@ export class VideoController {
         throw new HttpException(error.message, HttpStatus.PAYMENT_REQUIRED);
       }
 
+      if (error instanceof ProviderUnavailableError) {
+        throw new BadRequestException(error.message);
+      }
+
       throw error;
     }
   }
@@ -78,5 +83,16 @@ export class VideoController {
 
       throw error;
     }
+  }
+
+  @Get('videos')
+  public async listVideos(@CurrentUser() user: AuthenticatedUser) {
+    const videos = await this.videoService.listVideos(user.id);
+
+    return {
+      success: true,
+      data: videos,
+      error: null,
+    };
   }
 }

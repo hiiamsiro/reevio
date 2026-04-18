@@ -59,11 +59,19 @@ export interface OrchestratedVideoPlan {
   readonly durationInSeconds: number;
 }
 
+export type GeneratedImageProvider = 'cloudflare' | 'huggingface' | 'pexels' | 'pixabay';
+export type GeneratedImageSourceKind = 'generated' | 'stock';
+
 export interface GeneratedImageAsset {
   readonly id: string;
   readonly prompt: string;
   readonly url: string;
   readonly score: number;
+  readonly provider: GeneratedImageProvider;
+  readonly sourceKind: GeneratedImageSourceKind;
+  readonly fallbackDepth: number;
+  readonly attribution?: string | undefined;
+  readonly searchQuery?: string | undefined;
 }
 
 export interface GeneratedImageVariation {

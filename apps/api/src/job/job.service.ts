@@ -146,20 +146,10 @@ function toJobRecord(jobRecord: PersistedJobRecord): JobRecord {
   };
 }
 
-function toAppProviderName(providerName: string) {
+function toAppProviderName(providerName: string): 'remotion' {
   switch (providerName) {
     case 'REMOTION':
       return 'remotion';
-    case 'TOPVIEW':
-      return 'topview';
-    case 'GROK':
-      return 'grok';
-    case 'FLOW':
-      return 'flow';
-    case 'VEO':
-      return 'veo';
-    case 'GEMINI':
-      return 'gemini';
     default:
       throw new Error(`Unknown provider value "${providerName}".`);
   }

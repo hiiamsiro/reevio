@@ -89,8 +89,7 @@
    Direct content (buttons, inputs, text) are grandchildren so they keep their styles. */
 .body > .toolPanel,
 .body > .progressCard,
-.body > .selectedHookCard,
-.body > .hookCard,
+.body > .infoCard,
 .body > .providerCard,
 .body > .heroMetric,
 .body > .presetCard,

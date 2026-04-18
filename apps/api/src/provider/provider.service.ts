@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PROVIDER_DEFINITIONS } from './provider.data';
-import { ProviderNotFoundError } from './provider.errors';
+import { ProviderNotFoundError, ProviderUnavailableError } from './provider.errors';
 import { ProviderDefinition, VideoProviderName } from './provider.types';
 
 @Injectable()
@@ -16,6 +16,16 @@ export class ProviderService {
 
     if (!providerDefinition) {
       throw new ProviderNotFoundError(providerName);
+    }
+
+    return providerDefinition;
+  }
+
+  public getCreatableProvider(providerName: VideoProviderName): ProviderDefinition {
+    const providerDefinition = this.getProvider(providerName);
+
+    if (providerDefinition.status === 'disabled') {
+      throw new ProviderUnavailableError(providerName);
     }
 
     return providerDefinition;

@@ -1,4 +1,6 @@
-export const VIDEO_PROVIDER_VALUES = ['remotion', 'topview', 'grok', 'flow', 'veo', 'gemini'] as const;
+export const VIDEO_PROVIDER_VALUES = ['remotion'] as const;
+
+export const CREATABLE_VIDEO_PROVIDER_VALUES = ['remotion'] as const;
 
 export const PROVIDER_PRICE_TIER_VALUES = ['free', 'pro', 'premium'] as const;
 

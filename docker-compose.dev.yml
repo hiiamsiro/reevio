@@ -35,12 +35,18 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: reevio-web
     environment:
+      CHOKIDAR_USEPOLLING: 'true'
+      WATCHPACK_POLLING: 'true'
+      WATCHPACK_POLLING_INTERVAL: '3000'
+      TSC_WATCHFILE: UsePolling
+      TSC_WATCHDIRECTORY: RecursiveDirectoryUsingDynamicPriorityPolling
       NEXT_PUBLIC_API_URL: http://localhost:3000
       API_URL: http://api:4000
       AUTH_SECRET: change-me-in-development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/reevio
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=4096
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
@@ -54,7 +60,7 @@ services:
       [
         'sh',
         '-lc',
-        'pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F web dev',
+        'pnpm -F web dev',
       ]
     ports:
       - '3000:3000'
@@ -64,7 +70,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000 || exit 1']
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000'').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,6 +84,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: reevio-api
+    env_file:
+      - .env
     environment:
       CHOKIDAR_USEPOLLING: 'true'
       WATCHPACK_POLLING: 'true'
@@ -89,11 +101,6 @@ services:
       NODE_ENV: development
       PORT: '4000'
       NEXT_PUBLIC_API_URL: http://localhost:3000
-      TOPVIEW_API_KEY: ${TOPVIEW_API_KEY:-}
-      GROK_API_KEY: ${GROK_API_KEY:-}
-      GOOGLE_FLOW_API_KEY: ${GOOGLE_FLOW_API_KEY:-}
-      VEO_API_KEY: ${VEO_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
@@ -107,7 +114,7 @@ services:
       [
         'sh',
         '-lc',
-        'pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F api db:push && pnpm -F api db:seed && pnpm -F api dev',
+        'cd apps/api && ./node_modules/.bin/prisma db push --accept-data-loss && ./node_modules/.bin/tsx prisma/seed.ts && ./node_modules/.bin/nest start --watch',
       ]
     ports:
       - '4000:4000'
@@ -122,6 +129,8 @@ services:
       context: .
       dockerfile: apps/worker/Dockerfile
     container_name: reevio-worker
+    env_file:
+      - .env
     environment:
       CHOKIDAR_USEPOLLING: 'true'
       TSC_WATCHFILE: UsePolling
@@ -133,11 +142,6 @@ services:
       STORAGE_PATH: /app/storage
       STORAGE_PUBLIC_BASE_URL: http://localhost:4000
       NODE_ENV: development
-      TOPVIEW_API_KEY: ${TOPVIEW_API_KEY:-}
-      GROK_API_KEY: ${GROK_API_KEY:-}
-      GOOGLE_FLOW_API_KEY: ${GOOGLE_FLOW_API_KEY:-}
-      VEO_API_KEY: ${VEO_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - ./apps/worker:/app/apps/worker
       - ./packages:/app/packages
@@ -151,7 +155,7 @@ services:
       [
         'sh',
         '-lc',
-        'mkdir -p apps/worker/prisma && cp apps/api/prisma/schema.prisma apps/worker/prisma/schema.prisma && pnpm -F @reevio/types build && pnpm -F @reevio/config build && pnpm -F worker db:generate && pnpm -F worker dev',
+        'mkdir -p apps/worker/prisma && cp apps/api/prisma/schema.prisma apps/worker/prisma/schema.prisma && pnpm -F worker db:generate && pnpm -F worker dev',
       ]
     depends_on:
       redis:

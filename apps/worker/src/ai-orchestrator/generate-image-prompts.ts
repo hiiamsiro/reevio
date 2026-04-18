@@ -1,5 +1,6 @@
 import { ParsedPromptData, SceneOutline, VideoGenerationJobData } from '@reevio/types';
 import { createGenerateImagePromptsTemplate } from '../prompt-engine/prompt-templates';
+import { deriveCreativeProfile } from './creative-direction';
 import { runWithRetryAndFallback } from './run-with-retry-and-fallback';
 
 const AI_STEP_RETRIES = 2;
@@ -32,9 +33,18 @@ function createPrimaryImagePrompts(
     throw new Error('Primary image prompt template is empty.');
   }
 
+  const creativeProfile = deriveCreativeProfile(extractedData);
+
   return scenes.map(
     (scene) =>
-      `${scene.visualPrompt}. Emphasize ${extractedData.productName}, affiliate style, ${jobData.aspectRatio}.`
+      [
+        scene.visualPrompt,
+        `Create a premium still frame for ${extractedData.productName}.`,
+        `Lean into ${creativeProfile.visualStyle}.`,
+        `Color styling: ${creativeProfile.palette}.`,
+        `Imply motion through composition, directional blur, layered depth, and lighting rhythm.`,
+        `Short-form storytelling image optimized for ${jobData.aspectRatio}.`,
+      ].join(' ')
   );
 }
 
@@ -49,8 +59,10 @@ function createFallbackImagePrompts(
     throw new Error('Fallback image prompt template is empty.');
   }
 
+  const creativeProfile = deriveCreativeProfile(extractedData);
+
   return scenes.map(
     (_scene, index) =>
-      `Clean product marketing image ${index + 1} for ${extractedData.productName} in ${jobData.aspectRatio}.`
+      `Premium short-form marketing frame ${index + 1} for ${extractedData.productName} in ${jobData.aspectRatio}. Use ${creativeProfile.visualStyle}, ${creativeProfile.palette}, and ${creativeProfile.motionDirection}.`
   );
 }

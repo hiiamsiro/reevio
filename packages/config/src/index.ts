@@ -1,13 +1,11 @@
 import { z } from 'zod';
 
-export const videoProviderSchema = z.enum([
-  'remotion',
-  'topview',
-  'grok',
-  'flow',
-  'veo',
-  'gemini',
-]);
+const optionalNonEmptyString = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().min(1).optional()
+);
+
+export const videoProviderSchema = z.enum(['remotion']);
 
 export const videoRenderParamsSchema = z.object({
   script: z.string().optional(),
@@ -61,21 +59,36 @@ export const envSchema = z.object({
 
   // Auth
   AUTH_SECRET: z.string().min(1).default('change-me-in-production'),
-  AUTH_URL: z.string().url().default('http://localhost:3000'),
 
-  // Default provider
-  VIDEO_PROVIDER: videoProviderSchema.default('remotion'),
+  // Image providers
+  IMAGE_PROVIDER_ORDER: z
+    .string()
+    .default('cloudflare,huggingface,pexels,pixabay'),
+  CF_ACCOUNT_ID: optionalNonEmptyString,
+  CF_API_TOKEN: optionalNonEmptyString,
+  CF_IMAGE_MODEL: z
+    .string()
+    .default('@cf/black-forest-labs/flux-1-schnell'),
+  HF_API_KEY: optionalNonEmptyString,
+  HF_IMAGE_MODEL: z
+    .string()
+    .default('black-forest-labs/FLUX.1-schnell'),
+  PEXELS_API_KEY: optionalNonEmptyString,
+  PIXABAY_API_KEY: optionalNonEmptyString,
+  IMAGE_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().default(25000),
+  IMAGE_PROVIDER_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(300),
 
-  // Provider API Keys
-  REMOTION_LICENSE_KEY: z.string().optional(),
-  TOPVIEW_API_KEY: z.string().optional(),
-  GROK_API_KEY: z.string().optional(),
-  GOOGLE_FLOW_API_KEY: z.string().optional(),
-  VEO_API_KEY: z.string().optional(),
-  GEMINI_API_KEY: z.string().optional(),
-
-  // Webhooks
-  WEBHOOK_SECRET: z.string().optional(),
+  // Edge TTS
+  EDGE_TTS_VOICE: optionalNonEmptyString,
+  EDGE_TTS_LANG: z.string().min(1).default('vi-VN'),
+  EDGE_TTS_OUTPUT_FORMAT: z
+    .string()
+    .default('audio-24khz-48kbitrate-mono-mp3'),
+  EDGE_TTS_RATE: z.string().default('default'),
+  EDGE_TTS_PITCH: z.string().default('default'),
+  EDGE_TTS_VOLUME: z.string().default('default'),
+  EDGE_TTS_PROXY: optionalNonEmptyString,
+  EDGE_TTS_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 });
 
 export type Env = z.infer<typeof envSchema>;

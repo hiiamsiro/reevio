@@ -20,11 +20,6 @@ enum UserRole {
 
 enum VideoProvider {
   REMOTION
-  TOPVIEW
-  GROK
-  FLOW
-  VEO
-  GEMINI
 }
 
 enum VideoStatus {

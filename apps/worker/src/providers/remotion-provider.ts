@@ -1,5 +1,6 @@
 import { VideoGenerationResult } from '@reevio/types';
 import { StorageService } from '../storage/storage.types';
+import { renderRemotionVideo } from './remotion-helpers';
 import { GenerateVideoInput, VideoProvider } from './video-provider.types';
 
 export class RemotionProvider implements VideoProvider {
@@ -8,30 +9,24 @@ export class RemotionProvider implements VideoProvider {
   public constructor(private readonly storageService: StorageService) {}
 
   public async generateVideo(input: GenerateVideoInput): Promise<VideoGenerationResult> {
-    const outputUrl = await this.storageService.saveTextFile(
+    const renderedVideo = await renderRemotionVideo({
+      aspectRatio: input.aspectRatio,
+      builtScenes: input.builtScenes,
+      subtitlesUrl: input.subtitlesUrl,
+      videoId: input.videoId,
+      voiceoverUrl: input.voiceoverUrl,
+    });
+    const outputUrl = await this.storageService.saveBinaryFile(
       `videos/remotion/${input.videoId}.mp4`,
-      JSON.stringify(
-        {
-          provider: this.name,
-          videoId: input.videoId,
-          aspectRatio: input.aspectRatio,
-          scenes: input.builtScenes.length,
-          voiceoverUrl: input.voiceoverUrl,
-          subtitlesUrl: input.subtitlesUrl,
-        },
-        null,
-        2
-      )
+      renderedVideo.fileBytes
     );
 
     return {
       provider: this.name,
       url: outputUrl,
       previewUrl: outputUrl,
-      durationInSeconds:
-        input.builtScenes.reduce((total, scene) => total + scene.durationInSeconds, 0) ||
-        input.orchestratedPlan.durationInSeconds,
-      artifactKind: 'json',
+      durationInSeconds: renderedVideo.durationInSeconds,
+      artifactKind: 'video',
     };
   }
 }

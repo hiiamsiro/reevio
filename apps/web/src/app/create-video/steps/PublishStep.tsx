@@ -1,30 +1,13 @@
-import {
-  createExportFormats,
-  type ExportFormatDefinition,
-  type ExportFormatId,
-  type HashtagSuggestionSet,
-  type PostingPreparation,
+import type {
+  ExportFormatDefinition,
+  ExportFormatId,
+  PostingPreparation,
 } from '../content-studio';
-import type { WatermarkPosition } from '../page.types';
-import {
-  CollapsibleSection,
-  ExportPanel,
-  PostingPreparationPanel,
-  HashtagGeneratorPanel,
-  TeamModePanel,
-  WatermarkPanel,
-  StorageCdnPanel,
-  MonitoringPanel,
-  ReferralDashboardPanel,
-  PerformanceAiPanel,
-} from '../components';
-import { workflowNotes } from '../page.constants';
-import styles from './PublishStep.module.css';
+import { ExportPanel, PostingPreparationPanel } from '../components';
+import styles from '../page.module.css';
 
 export interface PublishStepProps {
   readonly prompt: string;
-  readonly selectedHookText: string | null;
-  readonly ctaText: string;
   readonly exportFormats: readonly ExportFormatDefinition[];
   readonly selectedExportFormatId: ExportFormatId;
   readonly onSelectExportFormat: (formatId: ExportFormatId) => void;
@@ -33,45 +16,17 @@ export interface PublishStepProps {
   readonly postingPreparation: PostingPreparation;
   readonly onRegeneratePostingPreparation: () => void;
   readonly onCopyPostingField: (label: string, value: string) => void;
-  readonly onUpdatePostingPreparation: (field: keyof PostingPreparation, value: string) => void;
+  readonly onUpdatePostingPreparation: (
+    field: keyof PostingPreparation,
+    value: string
+  ) => void;
   readonly postingNotice: string | null;
-  readonly hashtagSuggestions: HashtagSuggestionSet;
-  readonly onRegenerateHashtags: () => void;
-  readonly onCopyHashtags: () => void;
-  readonly onUseHashtagsInPosting: () => void;
-  readonly hashtagNotice: string | null;
-  readonly inviteEmail: string;
-  readonly onInviteEmailChange: (value: string) => void;
-  readonly inviteRole: 'owner' | 'editor';
-  readonly onInviteRoleChange: (role: 'owner' | 'editor') => void;
-  readonly onInviteMember: () => void;
-  readonly teamMembers: readonly { readonly id: string; readonly email: string; readonly role: 'owner' | 'editor' }[];
-  readonly teamNotice: string | null;
-  readonly watermarkType: 'text' | 'logo';
-  readonly onWatermarkTypeChange: (type: 'text' | 'logo') => void;
-  readonly watermarkText: string;
-  readonly onWatermarkTextChange: (value: string) => void;
-  readonly watermarkPosition: WatermarkPosition;
-  readonly onWatermarkPositionChange: (position: WatermarkPosition) => void;
-  readonly storageUrl: string;
-  readonly onCopyStorageUrl: () => void;
-  readonly bulkJobs: readonly { readonly id: string; readonly status: string; readonly errorMessage: string | null }[];
-  readonly referralCode: string;
-  readonly onCopyReferralCode: () => void;
-  readonly referralCredits: number;
-  readonly views: string;
-  readonly onViewsChange: (value: string) => void;
-  readonly likes: string;
-  readonly onLikesChange: (value: string) => void;
-  readonly watchTime: string;
-  readonly onWatchTimeChange: (value: string) => void;
-  readonly performanceInsight: { readonly health: string; readonly suggestion: string };
+  readonly outputUrl: string | null;
+  readonly onCopyOutputUrl: () => void;
 }
 
 export function PublishStep({
   prompt,
-  selectedHookText,
-  ctaText,
   exportFormats,
   selectedExportFormatId,
   onSelectExportFormat,
@@ -82,62 +37,52 @@ export function PublishStep({
   onCopyPostingField,
   onUpdatePostingPreparation,
   postingNotice,
-  hashtagSuggestions,
-  onRegenerateHashtags,
-  onCopyHashtags,
-  onUseHashtagsInPosting,
-  hashtagNotice,
-  inviteEmail,
-  onInviteEmailChange,
-  inviteRole,
-  onInviteRoleChange,
-  onInviteMember,
-  teamMembers,
-  teamNotice,
-  watermarkType,
-  onWatermarkTypeChange,
-  watermarkText,
-  onWatermarkTextChange,
-  watermarkPosition,
-  onWatermarkPositionChange,
-  storageUrl,
-  onCopyStorageUrl,
-  bulkJobs,
-  referralCode,
-  onCopyReferralCode,
-  referralCredits,
-  views,
-  onViewsChange,
-  likes,
-  onLikesChange,
-  watchTime,
-  onWatchTimeChange,
-  performanceInsight,
+  outputUrl,
+  onCopyOutputUrl,
 }: PublishStepProps) {
   const selectedExportFormat =
-    exportFormats.find((format) => format.id === selectedExportFormatId) ?? exportFormats[0];
-
-  const monitoringStats = {
-    failedJobs: bulkJobs.filter((bulkJob) => bulkJob.status === 'failed').length,
-    activeJobs: bulkJobs.filter(
-      (bulkJob) => bulkJob.status === 'queued' || bulkJob.status === 'processing'
-    ).length,
-    latestError: bulkJobs.find((bulkJob) => bulkJob.errorMessage)?.errorMessage ?? 'No recent failures.',
-  };
+    exportFormats.find((format) => format.id === selectedExportFormatId) ??
+    exportFormats[0];
+  const promptSnippet =
+    prompt.trim().length > 100
+      ? `${prompt.trim().slice(0, 97).trimEnd()}...`
+      : prompt.trim();
 
   return (
     <>
-      <CollapsibleSection
-        eyebrow="Publish"
-        title="Distribution, growth, delivery, analytics"
-        description="Package the final video for download, posting, team handoff, and performance follow-up."
-        defaultOpen={true}
-      >
-        <div className={styles.sectionGroup}>
-          <div>
-            <p className={styles.groupEyebrow}>Core</p>
-            <h3 className={styles.groupTitle}>Distribution</h3>
-          </div>
+      <div className={styles.publishOverview}>
+        <article className={styles.overviewCard}>
+          <span className={styles.overviewLabel}>Output status</span>
+          <strong>{outputUrl ? 'Ready to package' : 'Waiting for render'}</strong>
+          <span className={styles.overviewMeta}>
+            {outputUrl
+              ? 'Your render is available for export briefs and posting copy.'
+              : 'Finish the render step first to unlock the export package.'}
+          </span>
+        </article>
+        <article className={styles.overviewCard}>
+          <span className={styles.overviewLabel}>Preview headline</span>
+          <strong>{selectedExportFormat.previewHeadline}</strong>
+          <span className={styles.overviewMeta}>
+            Export preview and posting title are generated from the current brief.
+          </span>
+        </article>
+        <article className={styles.overviewCard}>
+          <span className={styles.overviewLabel}>Format focus</span>
+          <strong>{selectedExportFormat.label}</strong>
+          <span className={styles.overviewMeta}>{selectedExportFormat.canvas}</span>
+        </article>
+        <article className={styles.overviewCard}>
+          <span className={styles.overviewLabel}>Current brief</span>
+          <strong>{promptSnippet || 'No brief provided'}</strong>
+          <span className={styles.overviewMeta}>
+            Export briefs are built from the latest prompt state.
+          </span>
+        </article>
+      </div>
+
+      <div className={styles.publishLayout}>
+        <div className={styles.primaryColumn}>
           <ExportPanel
             exportFormats={exportFormats}
             selectedExportFormat={selectedExportFormat}
@@ -154,81 +99,43 @@ export function PublishStep({
           />
         </div>
 
-        <div className={styles.sectionGroup}>
-          <div>
-            <p className={styles.groupEyebrow}>Advanced</p>
-            <h3 className={styles.groupTitle}>Growth</h3>
-          </div>
-          <HashtagGeneratorPanel
-            hashtagNotice={hashtagNotice}
-            hashtagSuggestions={hashtagSuggestions}
-            onCopyHashtags={onCopyHashtags}
-            onRegenerateHashtags={onRegenerateHashtags}
-            onUseHashtagsInPosting={onUseHashtagsInPosting}
-          />
-          <TeamModePanel
-            inviteEmail={inviteEmail}
-            inviteRole={inviteRole}
-            onInviteEmailChange={onInviteEmailChange}
-            onInviteMember={onInviteMember}
-            onInviteRoleChange={onInviteRoleChange}
-            teamMembers={teamMembers}
-            teamNotice={teamNotice}
-          />
-        </div>
+        <aside className={styles.secondaryColumn}>
+          <section className={styles.outputPanel} aria-labelledby="export-output-title">
+            <div className={styles.outputHeader}>
+              <div>
+                <p className={styles.outputEyebrow}>Output</p>
+                <h3 className={styles.outputTitle} id="export-output-title">
+                  Delivery link
+                </h3>
+              </div>
+              <button
+                className={styles.secondaryButton}
+                disabled={!outputUrl}
+                onClick={onCopyOutputUrl}
+                type="button"
+              >
+                Copy URL
+              </button>
+            </div>
 
-        <div className={styles.sectionGroup}>
-          <div>
-            <p className={styles.groupEyebrow}>Advanced</p>
-            <h3 className={styles.groupTitle}>Delivery</h3>
-          </div>
-          <WatermarkPanel
-            onWatermarkPositionChange={onWatermarkPositionChange}
-            onWatermarkTextChange={onWatermarkTextChange}
-            onWatermarkTypeChange={onWatermarkTypeChange}
-            watermarkPosition={watermarkPosition}
-            watermarkText={watermarkText}
-            watermarkType={watermarkType}
-          />
-          <StorageCdnPanel
-            storageUrl={storageUrl}
-            onCopyStorageUrl={onCopyStorageUrl}
-          />
-          <MonitoringPanel
-            failedJobs={monitoringStats.failedJobs}
-            activeJobs={monitoringStats.activeJobs}
-            latestError={monitoringStats.latestError}
-          />
-        </div>
-
-        <div className={styles.sectionGroup}>
-          <div>
-            <p className={styles.groupEyebrow}>Advanced</p>
-            <h3 className={styles.groupTitle}>Analytics</h3>
-          </div>
-          <ReferralDashboardPanel
-            referralCode={referralCode}
-            onCopyReferralCode={onCopyReferralCode}
-            referralCredits={referralCredits}
-          />
-          <PerformanceAiPanel
-            likes={likes}
-            onLikesChange={onLikesChange}
-            onViewsChange={onViewsChange}
-            onWatchTimeChange={onWatchTimeChange}
-            performanceInsight={performanceInsight}
-            views={views}
-            watchTime={watchTime}
-          />
-        </div>
-      </CollapsibleSection>
-
-      <div className={styles.noteGrid}>
-        {workflowNotes.map((note) => (
-          <div className={styles.noteCard} key={note}>
-            {note}
-          </div>
-        ))}
+            <div className={styles.outputCard}>
+              <strong>{outputUrl ? 'Render ready' : 'Render pending'}</strong>
+              <p className={styles.outputUrl}>
+                {outputUrl ?? 'The final delivery URL will appear here once the render completes.'}
+              </p>
+              {outputUrl ? (
+                <a
+                  className={styles.outputLink}
+                  href={outputUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open output
+                </a>
+              ) : null}
+            </div>
+          </section>
+        </aside>
       </div>
     </>
   );

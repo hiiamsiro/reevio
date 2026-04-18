@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
+import type { VideoGenerationStep } from '@reevio/types';
 
 export interface VideoStepEvent {
   readonly videoId: string;
-  readonly step: string;
+  readonly step: VideoGenerationStep;
 }
 
 export interface VideoCompletedEvent {

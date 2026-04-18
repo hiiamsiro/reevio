@@ -1,187 +1,15 @@
 import type {
-  CtaGeneratorInput,
-  CtaType,
   ExportFormatDefinition,
   ExportFormatInput,
-  HashtagSuggestionInput,
-  HashtagSuggestionSet,
-  HookGeneratorInput,
-  HookOption,
   PostingPreparation,
   PostingPreparationInput,
   PromptWithCreativeDirectivesInput,
   RewriteVariationInput,
   TrendIdea,
   VideoTemplateDefinition,
-  ViralScoreAnalysis,
-  ViralScoreAnalysisInput,
 } from './content-studio.types';
 
-export function createBulkVideoPrompt(productDescription: string): string {
-  const normalizedDescription = normalizeProductDescription(productDescription);
-
-  if (normalizedDescription.length === 0) {
-    return '';
-  }
-
-  const hookText =
-    createHookOptions({
-      productDescription: normalizedDescription,
-      seed: 0,
-    })[0]?.text ?? null;
-  const ctaText = createCtaText({
-    productDescription: normalizedDescription,
-    seed: 0,
-    type: 'urgency',
-  });
-
-  return buildPromptWithCreativeDirectives({
-    prompt: `Create an affiliate video for ${normalizedDescription}.`,
-    selectedHookText: hookText,
-    ctaText,
-  });
-}
-
-export function parseBulkProductList(input: string): string[] {
-  return input
-    .split(/\r?\n/)
-    .map((line) => line.split(',')[0]?.trim() ?? '')
-    .filter((line) => line.toLowerCase() !== 'product')
-    .filter((line) => line.length > 0);
-}
-
-export function createPostingPreparation(input: PostingPreparationInput): PostingPreparation {
-  const headline = getPreviewHeadline({
-    prompt: input.prompt,
-    selectedHookText: input.selectedHookText,
-    ctaText: input.ctaText,
-  });
-  const summary = getPreviewBody(input.prompt);
-  const ctaLine = input.ctaText?.trim() || 'Watch the full cut and grab the offer.';
-  const hashtags = createHashtagSuggestionSet({
-    prompt: input.prompt,
-    seed: 0,
-  });
-
-  return {
-    title: headline.length > 68 ? `${headline.slice(0, 65)}...` : headline,
-    caption: `${headline}\n\n${summary}\n\n${ctaLine}`,
-    hashtags: hashtags.combined,
-  };
-}
-
-export function createHashtagSuggestionSet(
-  input: HashtagSuggestionInput
-): HashtagSuggestionSet {
-  const productFocus = getProductFocus(normalizeProductDescription(input.prompt));
-  const compactProductFocus = productFocus.replace(/\s+/g, '');
-  const trendingPool = [
-    '#fyp',
-    '#viralvideo',
-    '#contentmarketing',
-    '#brandgrowth',
-    '#productlaunch',
-  ];
-  const nichePool = [
-    `#${compactProductFocus}`,
-    `#${compactProductFocus}tips`,
-    '#ugcadcreative',
-    '#scrollstoppingads',
-    '#offercreative',
-  ];
-  const trending = rotateList(trendingPool, input.seed).slice(0, 3);
-  const niche = rotateList(nichePool, input.seed).slice(0, 3);
-
-  return {
-    trending,
-    niche,
-    combined: [...trending, ...niche].join(' '),
-  };
-}
-
-export function createViralScoreAnalysis(
-  input: ViralScoreAnalysisInput
-): ViralScoreAnalysis {
-  const promptText = input.prompt.trim();
-  const hookScore = input.selectedHookText?.trim() ? 35 : 18;
-  const emotionScore = hasEmotionSignal(promptText, input.ctaText) ? 33 : 20;
-  const lengthScore = getLengthScore(promptText);
-  const score = Math.min(100, hookScore + emotionScore + lengthScore);
-
-  return {
-    score,
-    hook: hookScore,
-    emotion: emotionScore,
-    length: lengthScore,
-  };
-}
-
-export function createRewriteVariations(input: RewriteVariationInput): string[] {
-  const normalizedPrompt = input.prompt.trim();
-  const basePrompt =
-    normalizedPrompt.length > 0
-      ? normalizedPrompt
-      : 'Create a conversion-focused product video.';
-  const hookLine = input.selectedHookText?.trim()
-    ? `Lead with ${input.selectedHookText.trim().toLowerCase()}`
-    : 'Lead with a fast curiosity hook';
-  const ctaLine = input.ctaText?.trim() || 'End with a strong CTA.';
-
-  return [
-    `${hookLine}. ${basePrompt} ${ctaLine}`,
-    `Open with social proof and a surprising reveal. ${basePrompt} ${ctaLine}`,
-    `Turn the prompt into a cleaner UGC angle with direct payoff. ${basePrompt} ${ctaLine}`,
-  ];
-}
-
-export function createTrendIdeas(prompt: string): TrendIdea[] {
-  const productFocus = getProductFocus(normalizeProductDescription(prompt));
-
-  return [
-    {
-      topic: 'Creator proof cuts',
-      idea: `Show ${productFocus} through fast creator reactions and comment overlays.`,
-    },
-    {
-      topic: 'Price reveal loops',
-      idea: `Build a short payoff around the before/after value of ${productFocus}.`,
-    },
-    {
-      topic: 'Expectation flips',
-      idea: `Use a fake-out opening, then reveal why ${productFocus} feels different.`,
-    },
-  ];
-}
-
-export function createVideoTemplates(): VideoTemplateDefinition[] {
-  return [
-    {
-      id: 'ugc-proof',
-      name: 'UGC Proof Stack',
-      preview: 'Fast creator hook, testimonial beat, offer close.',
-      prompt:
-        'Create a creator-led proof video with a fast hook, testimonial proof, and a strong CTA.',
-    },
-    {
-      id: 'premium-reveal',
-      name: 'Premium Reveal',
-      preview: 'Luxury pacing, close-up product reveal, clean end card.',
-      prompt:
-        'Create a premium reveal video with slow product shots, sensory copy, and a polished CTA.',
-    },
-    {
-      id: 'feature-flip',
-      name: 'Feature Flip',
-      preview: 'Open on pain point, show product shift, land the payoff.',
-      prompt:
-        'Create a feature-first video that opens on frustration, flips to solution, and closes on value.',
-    },
-  ];
-}
-
-const HOOK_COUNT = 10;
-const FALLBACK_PRODUCT_FOCUS = 'this product';
-const FALLBACK_HOOK_PREFIX = 'Lead with hook';
+const FALLBACK_PRODUCT_FOCUS = 'your story';
 const STOP_WORDS = [
   'a',
   'an',
@@ -199,69 +27,98 @@ const STOP_WORDS = [
   'your',
 ];
 
-const HOOK_TEMPLATES = [
-  'Why is {product} suddenly impossible to ignore?',
-  'Nobody expects {product} to feel this addictive.',
-  'The {product} detail making people stop and stare.',
-  '{product} is fixing the frustration nobody names.',
-  'This is why {product} feels premium in seconds.',
-  'People are replaying {product} for one emotional twist.',
-  'The simple reason {product} keeps hitting that wow moment.',
-  '{product} looks normal until this reaction kicks in.',
-  'Everyone scrolls past ads until {product} opens like this.',
-  'The fastest way to make {product} feel irresistible.',
-];
+export function createPostingPreparation(
+  input: PostingPreparationInput
+): PostingPreparation {
+  const headline = getPreviewHeadline(input);
+  const summary = getPreviewBody(input.prompt);
+  const productFocus = getProductFocus(normalizeBriefText(input.prompt));
+  const hashtags = [
+    '#shortformvideo',
+    '#contentstudio',
+    `#${productFocus.replace(/\s+/g, '')}`,
+    '#videomarketing',
+  ].join(' ');
 
-export function createHookOptions(input: HookGeneratorInput): HookOption[] {
-  const normalizedDescription = normalizeProductDescription(input.productDescription);
-  const productFocus = getProductFocus(normalizedDescription);
-
-  return Array.from({ length: HOOK_COUNT }, (_unused, index) => {
-    const hookTemplate = HOOK_TEMPLATES[(index + input.seed) % HOOK_TEMPLATES.length];
-    const hookText = capitalizeHookText(hookTemplate.replace('{product}', productFocus));
-
-    return {
-      id: `hook-${input.seed}-${index + 1}`,
-      text: hookText,
-      angle: createAngleLabel(index),
-    };
-  });
+  return {
+    title: headline.length > 72 ? `${headline.slice(0, 69)}...` : headline,
+    caption: `${headline}\n\n${summary}\n\nBuilt for a clean short-form cut with a fast payoff.`,
+    hashtags,
+  };
 }
 
-export function createCtaText(input: CtaGeneratorInput): string {
-  const productFocus = getProductFocus(normalizeProductDescription(input.productDescription));
-  const typeTemplates = getCtaTemplates(input.type);
-  const selectedTemplate = typeTemplates[input.seed % typeTemplates.length];
+export function createRewriteVariations(
+  input: RewriteVariationInput
+): string[] {
+  const normalizedPrompt = input.prompt.trim();
+  const basePrompt =
+    normalizedPrompt.length > 0
+      ? normalizedPrompt
+      : 'Create a short-form video with a clear opening, visual payoff, and memorable finish.';
 
-  return capitalizeHookText(selectedTemplate.replace('{product}', productFocus));
+  return [
+    `Keep the pacing tight, clarify the opening beat, and end on a clean visual payoff. ${basePrompt}`,
+    `Build this as a creator-friendly short with one clear product moment and a stronger ending. ${basePrompt}`,
+    `Turn this into a fast vertical video with clearer scene motion and cleaner captions. ${basePrompt}`,
+  ];
+}
+
+export function createTrendIdeas(prompt: string): TrendIdea[] {
+  const productFocus = getProductFocus(normalizeBriefText(prompt));
+
+  return [
+    {
+      topic: 'Pattern interrupt open',
+      idea: `Start ${productFocus} with a surprising visual or line that earns the first three seconds.`,
+    },
+    {
+      topic: 'Demo payoff',
+      idea: `Show ${productFocus} in action before explaining it so the result lands faster.`,
+    },
+    {
+      topic: 'Comment bait close',
+      idea: `End the ${productFocus} cut with a question or opinion trigger that invites responses.`,
+    },
+  ];
+}
+
+export function createVideoTemplates(): VideoTemplateDefinition[] {
+  return [
+    {
+      id: 'creator-demo',
+      name: 'Creator Demo',
+      preview: 'Fast personal intro, hands-on demo, confident wrap-up.',
+      prompt:
+        'Create a creator-led short video that opens with a relatable problem, demonstrates the product quickly, and ends with a polished recap.',
+    },
+    {
+      id: 'feature-spotlight',
+      name: 'Feature Spotlight',
+      preview: 'One sharp feature story with bold visuals and crisp captions.',
+      prompt:
+        'Create a short-form feature spotlight video with one standout capability, tight pacing, and a clean final scene.',
+    },
+    {
+      id: 'launch-teaser',
+      name: 'Launch Teaser',
+      preview: 'High-energy reveal, product motion, and memorable last frame.',
+      prompt:
+        'Create a launch teaser video with a dramatic opening, motion-heavy product reveal, and a closing frame built for social feeds.',
+    },
+    {
+      id: 'story-first',
+      name: 'Story First',
+      preview: 'Narrative opening, emotional midpoint, and satisfying payoff.',
+      prompt:
+        'Create a short video that tells a compact story, introduces the product through a human moment, and lands on a strong visual payoff.',
+    },
+  ];
 }
 
 export function buildPromptWithCreativeDirectives(
   input: PromptWithCreativeDirectivesInput
 ): string {
-  const normalizedPrompt = input.prompt.trim();
-  const directives = [
-    input.selectedHookText
-      ? `${FALLBACK_HOOK_PREFIX}: "${input.selectedHookText}"`
-      : null,
-    input.ctaText
-      ? `Close with CTA at the end of the video: "${input.ctaText.trim()}"`
-      : null,
-  ].filter((directive): directive is string => directive !== null && directive.trim().length > 0);
-
-  if (directives.length === 0) {
-    return normalizedPrompt;
-  }
-
-  if (normalizedPrompt.length === 0) {
-    return directives.join('\n');
-  }
-
-  return `${directives.join('\n')}\n${normalizedPrompt}`;
-}
-
-export function toCtaTypeLabel(type: CtaType): string {
-  return capitalizeHookText(type);
+  return input.prompt.trim();
 }
 
 export function createExportFormats(
@@ -269,7 +126,6 @@ export function createExportFormats(
 ): ExportFormatDefinition[] {
   const previewHeadline = getPreviewHeadline(input);
   const previewBody = getPreviewBody(input.prompt);
-  const ctaLabel = input.ctaText?.trim() || 'Add CTA before export';
 
   return [
     {
@@ -279,72 +135,67 @@ export function createExportFormats(
       aspectRatio: '9:16',
       canvas: '1080 x 1920',
       layoutLabel:
-        'Tall layout with stacked headline, center-safe product framing, and bottom CTA.',
+        'Vertical framing with stacked captions, product-safe center crop, and room for a final end frame.',
       previewHeadline,
       previewBody,
-      ctaLabel,
     },
     {
-      id: 'instagram-1x1',
-      platform: 'Instagram',
-      label: 'Instagram 1:1',
+      id: 'reels-9x16',
+      platform: 'Instagram Reels',
+      label: 'Reels 9:16',
+      aspectRatio: '9:16',
+      canvas: '1080 x 1920',
+      layoutLabel:
+        'Vertical social layout with punchier top-third text and softer caption density near the footer.',
+      previewHeadline,
+      previewBody,
+    },
+    {
+      id: 'shorts-9x16',
+      platform: 'YouTube Shorts',
+      label: 'Shorts 9:16',
+      aspectRatio: '9:16',
+      canvas: '1080 x 1920',
+      layoutLabel:
+        'Vertical storytelling cut with extra room for mid-frame subject motion and subtitle safety.',
+      previewHeadline,
+      previewBody,
+    },
+    {
+      id: 'square-1x1',
+      platform: 'Square Social',
+      label: 'Square 1:1',
       aspectRatio: '1:1',
       canvas: '1080 x 1080',
       layoutLabel:
-        'Balanced square layout with centered focal subject and tighter caption density.',
+        'Balanced square crop for feed posts, centered focal point, and tighter text hierarchy.',
       previewHeadline,
       previewBody,
-      ctaLabel,
     },
     {
-      id: 'instagram-4x5',
-      platform: 'Instagram',
-      label: 'Instagram 4:5',
+      id: 'portrait-4x5',
+      platform: 'Portrait Feed',
+      label: 'Portrait 4:5',
       aspectRatio: '4:5',
       canvas: '1080 x 1350',
       layoutLabel:
-        'Feed-optimized portrait layout with larger product crop and CTA-safe lower third.',
+        'Feed-optimized portrait frame with more room for subject detail and a lighter caption load.',
       previewHeadline,
       previewBody,
-      ctaLabel,
     },
   ];
 }
 
-function getCtaTemplates(type: CtaType): string[] {
-  if (type === 'urgency') {
-    return [
-      'Shop {product} before tonight slips away.',
-      'Tap now before {product} sells through this push.',
-      'Move fast if {product} is on your list today.',
-    ];
-  }
-
-  if (type === 'scarcity') {
-    return [
-      'Claim {product} before the last batch disappears.',
-      'Only a few {product} spots are left this round.',
-      'Catch {product} before everyone else clears it out.',
-    ];
-  }
-
-  return [
-    'Unlock 15% off {product} before checkout closes.',
-    'Grab the {product} deal while the discount is still live.',
-    'Use the offer now and save on {product} today.',
-  ];
+function normalizeBriefText(briefText: string): string {
+  return briefText.trim().replace(/\s+/g, ' ');
 }
 
-function normalizeProductDescription(productDescription: string): string {
-  return productDescription.trim().replace(/\s+/g, ' ');
-}
-
-function getProductFocus(productDescription: string): string {
-  if (productDescription.length === 0) {
+function getProductFocus(briefText: string): string {
+  if (briefText.length === 0) {
     return FALLBACK_PRODUCT_FOCUS;
   }
 
-  const words = productDescription
+  const words = briefText
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word.length > 1 && !STOP_WORDS.includes(word));
@@ -356,97 +207,24 @@ function getProductFocus(productDescription: string): string {
   return words.slice(0, 3).join(' ');
 }
 
-function capitalizeHookText(hookText: string): string {
-  if (hookText.length === 0) {
-    return hookText;
-  }
-
-  return `${hookText.charAt(0).toUpperCase()}${hookText.slice(1)}`;
-}
-
-function createAngleLabel(index: number): string {
-  const angleLabels = [
-    'Shock',
-    'Desire',
-    'Proof',
-    'Pain',
-    'Reveal',
-    'Contrast',
-    'Momentum',
-    'Tension',
-    'Mystery',
-    'Authority',
-  ];
-
-  return angleLabels[index] ?? 'Curiosity';
-}
-
 function getPreviewHeadline(input: ExportFormatInput): string {
-  if (input.selectedHookText?.trim()) {
-    return input.selectedHookText.trim();
-  }
-
   const promptPreview = getPreviewBody(input.prompt);
 
   if (promptPreview.length > 0) {
     return promptPreview;
   }
 
-  return 'Your export preview will appear here.';
+  return 'Your short-form preview will appear here.';
 }
 
 function getPreviewBody(prompt: string): string {
   const normalizedPrompt = prompt.trim().replace(/\s+/g, ' ');
 
   if (normalizedPrompt.length === 0) {
-    return 'Add a prompt to preview format-specific layout decisions.';
+    return 'Add a brief to preview how this cut will adapt across short-form formats.';
   }
 
-  return normalizedPrompt.length > 96
-    ? `${normalizedPrompt.slice(0, 93)}...`
+  return normalizedPrompt.length > 112
+    ? `${normalizedPrompt.slice(0, 109)}...`
     : normalizedPrompt;
-}
-
-function rotateList(values: readonly string[], seed: number): string[] {
-  if (values.length === 0) {
-    return [];
-  }
-
-  const safeSeed = seed % values.length;
-
-  return [...values.slice(safeSeed), ...values.slice(0, safeSeed)];
-}
-
-function hasEmotionSignal(prompt: string, ctaText: string | null): boolean {
-  const combinedText = `${prompt} ${ctaText ?? ''}`.toLowerCase();
-  const emotionalKeywords = [
-    'wow',
-    'love',
-    'feel',
-    'obsession',
-    'secret',
-    'wait',
-    'must',
-    'fast',
-  ];
-
-  return emotionalKeywords.some((keyword) => combinedText.includes(keyword));
-}
-
-function getLengthScore(prompt: string): number {
-  const promptLength = prompt.trim().length;
-
-  if (promptLength >= 40 && promptLength <= 180) {
-    return 32;
-  }
-
-  if (promptLength >= 20 && promptLength < 40) {
-    return 24;
-  }
-
-  if (promptLength > 180 && promptLength <= 260) {
-    return 22;
-  }
-
-  return 14;
 }

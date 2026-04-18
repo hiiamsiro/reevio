@@ -1,4 +1,5 @@
 import {
+  toAppJobStep,
   toAppVideoProvider,
   toAppVideoStatus,
   toVideoAspectRatio,
@@ -18,6 +19,9 @@ interface PersistedVideoRecord {
   readonly previewUrl: string | null;
   readonly voiceoverUrl: string | null;
   readonly subtitlesUrl: string | null;
+  readonly jobs?: readonly {
+    readonly step: string;
+  }[];
   readonly errorCode: string | null;
   readonly errorMessage: string | null;
   readonly createdAt: Date;
@@ -38,6 +42,7 @@ export function toVideoRecord(videoRecord: PersistedVideoRecord): VideoRecord {
     previewUrl: videoRecord.previewUrl,
     voiceoverUrl: videoRecord.voiceoverUrl,
     subtitlesUrl: videoRecord.subtitlesUrl,
+    currentStep: videoRecord.jobs?.[0] ? toAppJobStep(videoRecord.jobs[0].step) : null,
     errorCode: videoRecord.errorCode,
     errorMessage: videoRecord.errorMessage,
     createdAt: videoRecord.createdAt.toISOString(),

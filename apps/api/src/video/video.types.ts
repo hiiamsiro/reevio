@@ -1,5 +1,6 @@
 import { VIDEO_ASPECT_RATIO_VALUES, VIDEO_STATUS_VALUES } from './video.constants';
 import { VideoProviderName } from '../provider/provider.types';
+import { VideoGenerationStep } from '@reevio/types';
 
 export type VideoStatus = (typeof VIDEO_STATUS_VALUES)[number];
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIO_VALUES)[number];
@@ -30,6 +31,7 @@ export interface VideoRecord {
   readonly previewUrl: string | null;
   readonly voiceoverUrl: string | null;
   readonly subtitlesUrl: string | null;
+  readonly currentStep: VideoGenerationStep | null;
   readonly errorCode: string | null;
   readonly errorMessage: string | null;
   readonly createdAt: string;

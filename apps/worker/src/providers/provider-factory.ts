@@ -1,12 +1,7 @@
 import { VideoProvider } from './video-provider.types';
 
 const PROVIDER_FALLBACK_CHAINS: Record<VideoProvider['name'], VideoProvider['name'][]> = {
-  veo: ['veo', 'topview', 'grok', 'remotion'],
-  gemini: ['gemini'],
-  topview: ['topview', 'grok', 'remotion'],
-  grok: ['grok', 'remotion'],
-  remotion: ['remotion'],
-  flow: ['flow'],
+  remotion: [],
 };
 
 export class ProviderFactory {
@@ -30,7 +25,9 @@ export class ProviderFactory {
     providerName: VideoProvider['name'],
     input: Parameters<VideoProvider['generateVideo']>[0]
   ) {
-    const providerChain = PROVIDER_FALLBACK_CHAINS[providerName];
+    const providerChain = [providerName, ...PROVIDER_FALLBACK_CHAINS[providerName]].filter(
+      (candidate, index, chain) => chain.indexOf(candidate) === index
+    );
     let lastError: unknown = null;
 
     for (const fallbackProviderName of providerChain) {

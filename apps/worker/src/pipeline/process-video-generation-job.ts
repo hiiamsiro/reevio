@@ -10,10 +10,9 @@ import {
 } from '@reevio/types';
 import { createAiOrchestration } from '../ai-orchestrator/create-ai-orchestration';
 import { extractData } from '../ai-orchestrator/extract-data';
-import { createImageAssets } from '../image-pipeline/create-image-assets';
+import { type ImageAssetPipelineResult } from '../image-pipeline/create-image-assets';
 import { createProviderFactory } from '../providers/create-provider-factory';
 import { createStorageService } from '../storage/storage.factory';
-import { getCachedVideoPipelineState } from './video-cache';
 import { generateSubtitles } from '../voice/generate-subtitles';
 import { generateTtsTrack } from '../voice/generate-tts';
 import { emitVideoCompletedEvent, type VideoCompletedEvent } from './video-events';
@@ -22,7 +21,7 @@ interface PersistedJobWithVideo {
   readonly id: string;
   readonly userId: string;
   readonly videoId: string;
-  readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
+  readonly provider: string;
   readonly status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   readonly step:
     | 'PARSE_PROMPT'
@@ -36,7 +35,7 @@ interface PersistedJobWithVideo {
     readonly id: string;
     readonly prompt: string;
     readonly aspectRatio: string;
-    readonly provider: 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
+    readonly provider: string;
   };
 }
 
@@ -107,28 +106,33 @@ export async function processVideoGenerationJob(
 
   try {
     const storageService = createStorageService();
-    const cachedVideoPipelineState = await getCachedVideoPipelineState(prismaClient, jobData);
-    const parsedPrompt = cachedVideoPipelineState?.parsedPrompt ?? (await extractData(jobData.prompt));
+    const parsedPrompt = await extractData(jobData.prompt);
 
     await updateJobStep(prismaClient, persistedJob.id, 'AI_ORCHESTRATION', redis, persistedJob.userId, persistedJob.videoId);
-    const orchestratedPlan =
-      cachedVideoPipelineState?.orchestratedPlan ??
-      (await createOrchestratedPlan(parsedPrompt, jobData));
+    const orchestratedPlan = createMotionOnlyOrchestratedPlan(
+      await createOrchestratedPlan(parsedPrompt, jobData)
+    );
     const providerFactory = createProviderFactory();
-    const voiceoverUrl =
-      cachedVideoPipelineState?.voiceoverUrl ??
-      (await generateTtsTrack(jobData.videoId, orchestratedPlan.voiceoverText, storageService));
-    const subtitlesUrl =
-      cachedVideoPipelineState?.subtitlesUrl ??
-      (await generateSubtitles(jobData.videoId, orchestratedPlan.subtitleLines, storageService));
+    const voiceoverUrl = await generateTtsTrack(
+      jobData.videoId,
+      orchestratedPlan.voiceoverText,
+      storageService
+    );
+    const subtitlesUrl = await generateSubtitles(
+      jobData.videoId,
+      orchestratedPlan.subtitleLines,
+      storageService,
+      voiceoverUrl
+    );
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_IMAGES', redis, persistedJob.userId, persistedJob.videoId);
-    const generatedAssets =
-      cachedVideoPipelineState?.generatedAssets ??
-      (await createImageAssets(orchestratedPlan.imagePrompts, jobData.videoId, storageService));
+    const imagePipelineResult = createMotionOnlyImagePipelineResult(
+      orchestratedPlan.scenes,
+      jobData.videoId
+    );
 
     await updateJobStep(prismaClient, persistedJob.id, 'BUILD_SCENES', redis, persistedJob.userId, persistedJob.videoId);
-    const builtScenes = buildScenes(orchestratedPlan, generatedAssets);
+    const builtScenes = buildScenes(orchestratedPlan, imagePipelineResult.assets);
 
     await updateJobStep(prismaClient, persistedJob.id, 'GENERATE_VIDEO', redis, persistedJob.userId, persistedJob.videoId);
     const videoResult = await generateVideoResult(providerFactory, jobData, orchestratedPlan, builtScenes, voiceoverUrl, subtitlesUrl);
@@ -143,7 +147,7 @@ export async function processVideoGenerationJob(
       persistedJob,
       parsedPrompt,
       orchestratedPlan,
-      generatedAssets,
+      imagePipelineResult,
       builtScenes,
       voiceoverUrl,
       subtitlesUrl,
@@ -152,7 +156,8 @@ export async function processVideoGenerationJob(
     );
   } catch (error: unknown) {
     const errorMessage = getErrorMessage(error);
-    const isFinalAttempt = attemptsMade + 1 >= maxAttempts;
+    const isRetryableError = canRetryPipelineError(error);
+    const isFinalAttempt = !isRetryableError || attemptsMade + 1 >= maxAttempts;
 
     await handlePipelineFailure(prismaClient, persistedJob, errorMessage, isFinalAttempt, redis);
 
@@ -189,6 +194,67 @@ function buildScenes(
   });
 }
 
+function createMotionOnlyImagePipelineResult(
+  scenes: OrchestratedVideoPlan['scenes'],
+  videoId: string
+): ImageAssetPipelineResult {
+  const assets = scenes.map((scene, index) => ({
+    id: `${videoId}-motion-asset-${index + 1}`,
+    prompt: scene.visualPrompt,
+    url: createTransparentSvgDataUri(),
+    score: 1,
+    provider: 'pixabay' as const,
+    sourceKind: 'stock' as const,
+    fallbackDepth: 0,
+    attribution: 'motion-graphics-placeholder',
+    searchQuery: 'motion-graphics',
+  }));
+
+  return {
+    assets,
+    imageProviderChain: [],
+    imageResolutionAttempts: [],
+    providerFailures: [],
+  };
+}
+
+function createMotionOnlyOrchestratedPlan(
+  orchestratedPlan: OrchestratedVideoPlan
+): OrchestratedVideoPlan {
+  const motionDirective =
+    'Render this as full animation motion graphics. Avoid stock-photo look, avoid static hero images, and use native editorial shapes, UI panels, chart bars, glow accents, and kinetic type.';
+
+  return {
+    ...orchestratedPlan,
+    scenes: orchestratedPlan.scenes.map((scene) => ({
+      ...scene,
+      visualPrompt: ensureMotionOnlyVisualPrompt(scene.visualPrompt, motionDirective),
+    })),
+  };
+}
+
+function ensureMotionOnlyVisualPrompt(
+  visualPrompt: string,
+  motionDirective: string
+): string {
+  const normalizedPrompt = visualPrompt.toLowerCase();
+
+  if (
+    normalizedPrompt.includes('full animation motion graphics') ||
+    normalizedPrompt.includes('avoid stock-photo look') ||
+    normalizedPrompt.includes('motion-design')
+  ) {
+    return visualPrompt;
+  }
+
+  return `${visualPrompt} ${motionDirective}`;
+}
+
+function createTransparentSvgDataUri(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" fill="transparent"/></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
 function generateVideoResult(
   providerFactory: ReturnType<typeof createProviderFactory>,
   jobData: VideoGenerationJobData,
@@ -212,7 +278,7 @@ async function savePipelineResult(
   persistedJob: PersistedJobWithVideo,
   parsedPrompt: ParsedPromptData,
   orchestratedPlan: OrchestratedVideoPlan,
-  generatedAssets: GeneratedImageAsset[],
+  imagePipelineResult: ImageAssetPipelineResult,
   builtScenes: BuiltScene[],
   voiceoverUrl: string,
   subtitlesUrl: string,
@@ -225,6 +291,16 @@ async function savePipelineResult(
     beats: orchestratedPlan.beats,
     voiceoverText: orchestratedPlan.voiceoverText,
     subtitleLines: orchestratedPlan.subtitleLines,
+    imageProviderChain: imagePipelineResult.imageProviderChain,
+    imageResolutionAttempts: imagePipelineResult.imageResolutionAttempts,
+    imageSourceByScene: imagePipelineResult.assets.map((asset) => ({
+      assetId: asset.id,
+      provider: asset.provider,
+      sourceKind: asset.sourceKind,
+      fallbackDepth: asset.fallbackDepth,
+      searchQuery: asset.searchQuery ?? null,
+    })),
+    providerFailures: imagePipelineResult.providerFailures,
     queueVersion: 'phase-18',
   } as unknown as Prisma.InputJsonValue;
 
@@ -239,7 +315,7 @@ async function savePipelineResult(
       parsedPrompt: parsedPrompt as unknown as Prisma.InputJsonValue,
       scenes: builtScenes as unknown as Prisma.InputJsonValue,
       imagePrompts: orchestratedPlan.imagePrompts as unknown as Prisma.InputJsonValue,
-      assets: generatedAssets as unknown as Prisma.InputJsonValue,
+      assets: imagePipelineResult.assets as unknown as Prisma.InputJsonValue,
       outputUrl: videoResult.url,
       previewUrl: videoResult.previewUrl,
       voiceoverUrl,
@@ -411,6 +487,19 @@ function getErrorMessage(error: unknown): string {
   }
 
   return 'Unknown worker pipeline error';
+}
+
+function canRetryPipelineError(error: unknown): boolean {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'isRetryable' in error &&
+    typeof (error as { isRetryable?: unknown }).isRetryable === 'boolean'
+  ) {
+    return (error as { isRetryable: boolean }).isRetryable;
+  }
+
+  return true;
 }
 
 class PipelineJobNotFoundError extends Error {

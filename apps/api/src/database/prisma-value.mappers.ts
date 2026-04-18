@@ -3,7 +3,7 @@ import { JobStatus } from '../job/job.types';
 import { VideoProviderName } from '../provider/provider.types';
 import { VideoStatus } from '../video/video.types';
 
-type PrismaVideoProvider = 'REMOTION' | 'TOPVIEW' | 'GROK' | 'FLOW' | 'VEO' | 'GEMINI';
+type PrismaVideoProvider = 'REMOTION';
 type PrismaVideoStatus = 'DRAFT' | 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 type PrismaJobStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 type PrismaJobStep =
@@ -18,20 +18,10 @@ type PrismaUserRole = 'MEMBER' | 'ADMIN';
 
 const PRISMA_VIDEO_PROVIDER_BY_APP: Record<VideoProviderName, PrismaVideoProvider> = {
   remotion: 'REMOTION',
-  topview: 'TOPVIEW',
-  grok: 'GROK',
-  flow: 'FLOW',
-  veo: 'VEO',
-  gemini: 'GEMINI',
 };
 
 const APP_VIDEO_PROVIDER_BY_PRISMA: Record<PrismaVideoProvider, VideoProviderName> = {
   REMOTION: 'remotion',
-  TOPVIEW: 'topview',
-  GROK: 'grok',
-  FLOW: 'flow',
-  VEO: 'veo',
-  GEMINI: 'gemini',
 };
 
 const APP_VIDEO_STATUS_BY_PRISMA: Record<PrismaVideoStatus, VideoStatus> = {

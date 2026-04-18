@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Jost, Playfair_Display } from 'next/font/google';
 import { useEffect, useState } from 'react';
 import {
@@ -9,27 +9,25 @@ import {
   loadProviders,
 } from './page.api';
 import { styleModes } from './page.constants';
-import { toPriceTierLabel } from './page.helpers';
+import { toInlineMediaUrl } from './page.helpers';
 import { BriefStep } from './steps/BriefStep';
-import { SetupStep } from './steps/SetupStep';
 import { RenderStep } from './steps/RenderStep';
 import { PublishStep } from './steps/PublishStep';
 import {
   CreateVideoProvider,
   useCreateVideo,
 } from './hooks/useCreateVideoContext';
-import type {
-  CurrentUser,
-  ProviderDefinition,
-} from './page.types';
+import type { CurrentUser, ProviderDefinition } from './page.types';
 import styles from './page.module.css';
 
-// ─── Fonts ───────────────────────────────────────────────────────────────────
-
-const studioDisplay = Playfair_Display({ subsets: ['latin'], variable: '--landing-font-display' });
-const studioBody = Jost({ subsets: ['latin'], variable: '--landing-font-body' });
-
-// ─── Inner page (has access to context) ─────────────────────────────────────
+const studioDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--landing-font-display',
+});
+const studioBody = Jost({
+  subsets: ['latin'],
+  variable: '--landing-font-body',
+});
 
 function CreateVideoInner() {
   const router = useRouter();
@@ -43,34 +41,15 @@ function CreateVideoInner() {
     previousStep,
     nextStep,
     stepCompletion,
-    // Brief
-    hookSource,
-    onHookSourceChange,
-    onGenerateHooks,
-    onUseCurrentBrief,
-    selectedHook,
-    hookOptions,
-    selectedHookId,
-    copiedHookId,
-    onCopyHook,
-    onSelectHook,
-    hookErrorMessage,
-    ctaType,
-    ctaSeed,
-    ctaText,
-    onCtaTextChange,
-    onRegenerateCta,
-    onSelectCtaType,
     prompt,
     onPromptChange,
     rewriteVariations,
     selectedRewriteIndex,
     onSelectedRewriteIndexChange,
     onApplyRewriteVariation,
-    onApplyTemplate,
     trendIdeas,
     videoTemplates,
-    // Setup
+    onApplyTemplate,
     providers,
     selectedProvider,
     provider,
@@ -80,23 +59,15 @@ function CreateVideoInner() {
     hasEnoughCredits,
     isLowCredit,
     currentUser,
-    bulkInput,
-    onBulkInputChange,
-    onBulkFileUpload,
-    bulkJobs,
-    onGenerateBulk,
-    isBulkGenerating,
-    onRetryBulkJob,
-    onRetryFailedBulkJobs,
-    bulkErrorMessage,
-    viralScoreAnalysis,
-    // Render
     video,
+    queueVideos,
     isPending,
-    autoMachineNotice,
+    quickGenerateNotice,
+    errorMessage,
     onSubmit,
-    onRunAutoContentMachine,
-    // Publish
+    onRunQuickGenerate,
+    onRefreshQueue,
+    onSelectQueueVideo,
     exportFormats,
     selectedExportFormatId,
     onSelectExportFormat,
@@ -107,55 +78,18 @@ function CreateVideoInner() {
     onCopyPostingField,
     onUpdatePostingPreparation,
     postingNotice,
-    hashtagSuggestions,
-    onRegenerateHashtags,
-    onCopyHashtags,
-    onUseHashtagsInPosting,
-    hashtagNotice,
-    inviteEmail,
-    onInviteEmailChange,
-    inviteRole,
-    onInviteRoleChange,
-    onInviteMember,
-    teamMembers,
-    teamNotice,
-    watermarkType,
-    onWatermarkTypeChange,
-    watermarkText,
-    onWatermarkTextChange,
-    watermarkPosition,
-    onWatermarkPositionChange,
-    referralCode,
-    referralCredits,
-    onCopyReferralCode,
-    onCopyStorageUrl,
-    views,
-    onViewsChange,
-    likes,
-    onLikesChange,
-    watchTime,
-    onWatchTimeChange,
-    performanceInsight,
-    storageUrl,
-    selectedHook: hookSelected,
+    outputUrl,
+    onCopyOutputUrl,
   } = useCreateVideo();
 
   const activeStepMeta = studioSteps[activeStepIndex] ?? studioSteps[0];
   const activeStatus = video?.status ?? (isPending ? 'queued' : 'ready');
-  const previewMediaUrl = video?.outputUrl ?? video?.previewUrl ?? null;
+  const previewSourceUrl = outputUrl;
+  const previewMediaUrl = toInlineMediaUrl(previewSourceUrl);
 
   useEffect(() => {
     setPreviewPlaybackFailed(false);
   }, [previewMediaUrl]);
-
-  const nextWorkspaceAction =
-    activeStudioStep === 'brief'
-      ? 'Lock the prompt, choose a hook, and define the CTA before moving on.'
-      : activeStudioStep === 'setup'
-        ? 'Select provider, aspect ratio, and make sure credits are ready.'
-        : activeStudioStep === 'render'
-          ? 'Generate the video and wait for the preview state to complete.'
-          : 'Export the output, prep posting assets, and hand it off.';
 
   const handleLogout = async (): Promise<void> => {
     if (isLoggingOut) {
@@ -186,38 +120,20 @@ function CreateVideoInner() {
       case 'brief':
         return (
           <BriefStep
-            hookSource={hookSource}
-            onHookSourceChange={onHookSourceChange}
-            onGenerateHooks={onGenerateHooks}
-            onUseCurrentBrief={onUseCurrentBrief}
-            selectedHook={hookSelected}
-            hookOptions={hookOptions}
-            selectedHookId={selectedHookId}
-            copiedHookId={copiedHookId}
-            onCopyHook={onCopyHook}
-            onSelectHook={onSelectHook}
-            hookErrorMessage={hookErrorMessage}
-            ctaType={ctaType}
-            ctaSeed={ctaSeed}
-            ctaText={ctaText}
-            onCtaTextChange={onCtaTextChange}
-            onRegenerateCta={onRegenerateCta}
-            onSelectCtaType={onSelectCtaType}
             prompt={prompt}
             onPromptChange={onPromptChange}
             rewriteVariations={rewriteVariations}
             selectedRewriteIndex={selectedRewriteIndex}
             onSelectedRewriteIndexChange={onSelectedRewriteIndexChange}
             onApplyRewriteVariation={onApplyRewriteVariation}
-            onApplyTemplate={onApplyTemplate}
             trendIdeas={trendIdeas}
             videoTemplates={videoTemplates}
+            onApplyTemplate={onApplyTemplate}
           />
         );
-
-      case 'setup':
+      case 'render':
         return (
-          <SetupStep
+          <RenderStep
             providers={providers}
             selectedProvider={selectedProvider}
             provider={provider}
@@ -227,43 +143,23 @@ function CreateVideoInner() {
             hasEnoughCredits={hasEnoughCredits}
             isLowCredit={isLowCredit}
             currentUserCredits={currentUser?.credits ?? null}
-            bulkInput={bulkInput}
-            onBulkInputChange={onBulkInputChange}
-            onBulkFileUpload={onBulkFileUpload}
-            onGenerateBulk={onGenerateBulk}
-            isBulkGenerating={isBulkGenerating}
-            onRetryFailedBulkJobs={onRetryFailedBulkJobs}
-            bulkJobs={bulkJobs}
-            onRetryBulkJob={onRetryBulkJob}
-            bulkErrorMessage={bulkErrorMessage}
-            viralScoreAnalysis={viralScoreAnalysis}
-          />
-        );
-
-      case 'render':
-        return (
-          <RenderStep
-            provider={provider}
-            selectedProvider={selectedProvider}
-            hasEnoughCredits={hasEnoughCredits}
             isPending={isPending}
             onSubmit={onSubmit}
-            onRunAutoContentMachine={onRunAutoContentMachine}
-            autoMachineNotice={autoMachineNotice}
+            onRunQuickGenerate={onRunQuickGenerate}
+            quickGenerateNotice={quickGenerateNotice}
             videoStatus={activeStatus}
-            previewMediaUrl={previewMediaUrl}
-            videoTitle={video?.title ?? null}
-            prompt={prompt}
-            errorMessage={video?.errorMessage ?? null}
+            currentStep={video?.currentStep ?? null}
+            errorMessage={errorMessage}
+            queueVideos={queueVideos}
+            activeVideoId={video?.id ?? null}
+            onRefreshQueue={onRefreshQueue}
+            onSelectQueueVideo={onSelectQueueVideo}
           />
         );
-
-      case 'publish':
+      case 'export':
         return (
           <PublishStep
             prompt={prompt}
-            selectedHookText={hookSelected?.text ?? null}
-            ctaText={ctaText}
             exportFormats={exportFormats}
             selectedExportFormatId={selectedExportFormatId}
             onSelectExportFormat={onSelectExportFormat}
@@ -274,65 +170,49 @@ function CreateVideoInner() {
             onCopyPostingField={onCopyPostingField}
             onUpdatePostingPreparation={onUpdatePostingPreparation}
             postingNotice={postingNotice}
-            hashtagSuggestions={hashtagSuggestions}
-            onRegenerateHashtags={onRegenerateHashtags}
-            onCopyHashtags={onCopyHashtags}
-            onUseHashtagsInPosting={onUseHashtagsInPosting}
-            hashtagNotice={hashtagNotice}
-            inviteEmail={inviteEmail}
-            onInviteEmailChange={onInviteEmailChange}
-            inviteRole={inviteRole}
-            onInviteRoleChange={onInviteRoleChange}
-            onInviteMember={onInviteMember}
-            teamMembers={teamMembers}
-            teamNotice={teamNotice}
-            watermarkType={watermarkType}
-            onWatermarkTypeChange={onWatermarkTypeChange}
-            watermarkText={watermarkText}
-            onWatermarkTextChange={onWatermarkTextChange}
-            watermarkPosition={watermarkPosition}
-            onWatermarkPositionChange={onWatermarkPositionChange}
-            storageUrl={storageUrl}
-            onCopyStorageUrl={onCopyStorageUrl}
-            bulkJobs={bulkJobs}
-            referralCode={referralCode}
-            onCopyReferralCode={onCopyReferralCode}
-            referralCredits={referralCredits}
-            views={views}
-            onViewsChange={onViewsChange}
-            likes={likes}
-            onLikesChange={onLikesChange}
-            watchTime={watchTime}
-            onWatchTimeChange={onWatchTimeChange}
-            performanceInsight={performanceInsight}
+            outputUrl={outputUrl}
+            onCopyOutputUrl={onCopyOutputUrl}
           />
         );
     }
   };
 
+  const nextStepLabel =
+    nextStep !== null
+      ? studioSteps.find((step) => step.id === nextStep)?.label ?? nextStep
+      : null;
+
+  const canAdvance =
+    activeStudioStep === 'brief'
+      ? stepCompletion.brief
+      : activeStudioStep === 'render'
+        ? stepCompletion.export
+        : false;
+
   return (
-    <main className={`${styles.page} ${studioDisplay.variable} ${studioBody.variable}`}>
+    <main
+      className={`${styles.page} ${studioDisplay.variable} ${studioBody.variable}`}
+    >
       <div className={styles.backdrop} />
       <div className={styles.gridLines} />
       <div className={styles.glowOne} />
       <div className={styles.glowTwo} />
-
       <div className={styles.shell}>
-        {/* ── Nav ─────────────────────────────────────────────────── */}
         <header className={styles.nav}>
           <div className={styles.brandLockup}>
             <span className={styles.brandMark} aria-hidden="true" />
             <div>
               <p className={styles.brandName}>Reevio Studio</p>
-              <p className={styles.brandMeta}>Create video workspace</p>
+              <p className={styles.brandMeta}>Luxury AI short-form atelier</p>
             </div>
           </div>
+
           <div className={styles.navActions}>
-            <span className={styles.liveBadge}>
-              {currentUser ? `${currentUser.email} · ${currentUser.plan}` : 'Loading workspace'}
-            </span>
+            <Link className={styles.navLink} href="/">
+              Home
+            </Link>
             <Link className={styles.navLink} href="/pricing">
-              Buy credits
+              Pricing
             </Link>
             <button
               className={styles.navButton}
@@ -345,118 +225,85 @@ function CreateVideoInner() {
           </div>
         </header>
 
-        {/* ── Hero ────────────────────────────────────────────────── */}
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Create video</p>
+            <p className={styles.eyebrow}>Luxury short-form studio</p>
             <h1 className={styles.title}>
-              Generate, preview, and route renders inside the same visual system.
+              Craft premium TikTok, Reels, and Shorts cuts from one editorial brief.
             </h1>
             <p className={styles.subtitle}>
-              This editor now follows the same dark glass surface as the landing page, with vibrant
-              accents for prompts, provider state, and render feedback.
+              Reevio keeps the production loop refined: shape the brief, direct
+              the render, monitor the live cut, and package a polished final
+              output without losing the luxury tone.
             </p>
             <div className={styles.quickRow}>
               {styleModes.map((mode) => (
-                <span className={styles.quickPill} key={mode}>{mode}</span>
+                <span className={styles.quickPill} key={mode}>
+                  {mode}
+                </span>
               ))}
             </div>
           </div>
+
           <div className={styles.heroPanel}>
             <div className={styles.heroMetric}>
-              <span>Active provider</span>
-              <strong>{selectedProvider?.label ?? 'Loading providers'}</strong>
+              <span>Render house</span>
+              <strong>{selectedProvider?.label ?? 'No renderer configured'}</strong>
             </div>
             <div className={styles.heroMetric}>
-              <span>Remaining credits</span>
-              <strong>{currentUser ? currentUser.credits : '--'}</strong>
+              <span>Canvas</span>
+              <strong>{aspectRatio}</strong>
             </div>
             <div className={styles.heroMetric}>
-              <span>Credit cost</span>
-              <strong>{selectedProvider ? `${selectedProvider.creditCost} credits` : '--'}</strong>
+              <span>Credit reserve</span>
+              <strong>{currentUser?.credits ?? '--'}</strong>
             </div>
             <div className={styles.heroMetric}>
-              <span>Render status</span>
+              <span>Studio status</span>
               <strong>{activeStatus}</strong>
             </div>
           </div>
         </section>
 
-        {/* ── Main grid ─────────────────────────────────────────────── */}
-        <div className={styles.studioGrid}>
-          {/* ── Step panel ─────────────────────────────────────────── */}
-          <section className={`${styles.card} ${styles.panelStack}`}>
-            {/* Step tabs */}
-            <div className={styles.tabList} aria-label="Create video workflow steps">
-              {studioSteps.map((step) => {
-                const isActive = step.id === activeStudioStep;
-                const isReady = stepCompletion[step.id];
-                return (
-                  <button
-                    aria-pressed={isActive}
-                    className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''} ${isActive ? styles.tabButtonCurrent : ''}`}
-                    data-current={isActive ? 'true' : 'false'}
-                    key={step.id}
-                    onClick={() => setActiveStudioStep(step.id)}
-                    type="button"
-                  >
-                    <span className={styles.tabEyebrow}>{step.eyebrow}</span>
-                    <strong>{step.label}</strong>
-                    <span className={styles.tabDescription}>{step.description}</span>
-                    <span
-                      className={`${styles.tabStatus} ${isActive ? styles.tabStatusCurrent : ''}`}
-                    >
-                      {isActive ? 'Current step' : isReady ? 'Ready' : step.status}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Card header */}
+        <div className={styles.workspaceGrid}>
+          <section className={styles.mainCard}>
             <div className={styles.cardHeader}>
               <div>
                 <p className={styles.sectionEyebrow}>{activeStepMeta.eyebrow}</p>
-                <h2 className={styles.cardTitle}>
-                  {activeStudioStep === 'brief'
-                    ? 'Write the brief and shape the creative angle.'
-                    : activeStudioStep === 'setup'
-                      ? 'Configure the render stack before spending credits.'
-                      : activeStudioStep === 'render'
-                        ? 'Launch the render and monitor the output.'
-                        : 'Package the output for publishing and handoff.'}
-                </h2>
-                <p className={styles.sectionSummary}>{nextWorkspaceAction}</p>
+                <h2 className={styles.cardTitle}>{activeStepMeta.label}</h2>
+                <p className={styles.sectionSummary}>{activeStepMeta.description}</p>
               </div>
               <div className={styles.metaCluster}>
                 <span className={styles.metaBadge}>
                   {currentUser ? `${currentUser.credits} credits` : 'Loading credits'}
                 </span>
-                {selectedProvider ? (
-                  <span className={styles.metaBadge}>{selectedProvider.creditCost} credits / render</span>
-                ) : null}
-                <span className={styles.metaBadge}>{activeStepMeta.label} workspace</span>
+                <span className={styles.metaBadge}>{aspectRatio}</span>
+                <span className={styles.metaBadge}>{activeStatus}</span>
               </div>
             </div>
 
-            {/* Summary strip */}
-            <div className={styles.summaryStrip}>
-              <div className={styles.summaryCard}>
-                <span className={styles.summaryLabel}>Current step</span>
-                <strong>{activeStepMeta.label}</strong>
-              </div>
-              <div className={styles.summaryCard}>
-                <span className={styles.summaryLabel}>Next milestone</span>
-                <strong>{nextStep ? studioSteps.find(s => s.id === nextStep)?.label ?? nextStep : 'Finalize publish stack'}</strong>
-              </div>
+            <div className={styles.stepTabs} aria-label="Studio workflow steps">
+              {studioSteps.map((step) => {
+                const isActive = step.id === activeStudioStep;
+
+                return (
+                  <button
+                    aria-pressed={isActive}
+                    className={`${styles.stepButton} ${isActive ? styles.stepButtonActive : ''}`}
+                    key={step.id}
+                    onClick={() => setActiveStudioStep(step.id)}
+                    type="button"
+                  >
+                    <span className={styles.stepButtonEyebrow}>{step.eyebrow}</span>
+                    <strong className={styles.stepButtonLabel}>{step.label}</strong>
+                    <span className={styles.stepButtonMeta}>{step.description}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Active step content */}
-            <div className={styles.activePanel}>
-              {renderActiveStep()}
-            </div>
+            <div className={styles.activePanel}>{renderActiveStep()}</div>
 
-            {/* Step navigation */}
             <div className={styles.stepActions}>
               <button
                 className={styles.ghostButton}
@@ -466,167 +313,108 @@ function CreateVideoInner() {
               >
                 Previous step
               </button>
-              {nextStep ? (
+
+              {nextStepLabel ? (
                 <button
                   className={styles.secondaryButton}
-                  disabled={!stepCompletion[activeStudioStep]}
-                  onClick={() => setActiveStudioStep(nextStep)}
+                  disabled={!canAdvance}
+                  onClick={() => nextStep && setActiveStudioStep(nextStep)}
                   type="button"
                 >
-                  Continue to {nextStep ? nextStep.charAt(0).toUpperCase() + nextStep.slice(1) : ''}
+                  Continue to {nextStepLabel}
                 </button>
-              ) : (
-                <span className={styles.toolHint}>
-                  Publishing stack is ready once your render is complete.
-                </span>
-              )}
+              ) : null}
             </div>
           </section>
 
-          {/* ── Sidebar ─────────────────────────────────────────────── */}
-          <aside className={styles.sidebarStack}>
-            {/* Workflow rail */}
-            <section className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Workflow rail</p>
-                  <h2 className={styles.cardTitle}>Track the pipeline at a glance.</h2>
-                </div>
+          <aside className={styles.previewPanel}>
+            <div className={styles.previewHeader}>
+              <div>
+                <p className={styles.sectionEyebrow}>Live preview</p>
+                <h2 className={styles.previewTitle}>Editorial preview, always visible</h2>
               </div>
-              <div className={styles.workflowRail}>
-                {studioSteps.map((step) => {
-                  const isActive = step.id === activeStudioStep;
-                  const isReady = stepCompletion[step.id];
-                  return (
-                    <div
-                      className={`${styles.workflowStep} ${isReady ? styles.workflowStepReady : ''} ${isActive ? styles.workflowStepCurrent : ''}`}
-                      data-current={isActive ? 'true' : 'false'}
-                      key={step.id}
-                    >
-                      <div className={styles.workflowStepTop}>
-                        <span className={styles.workflowStepIndex}>{step.eyebrow}</span>
-                        <span
-                          className={`${styles.workflowStepStatus} ${isReady ? styles.workflowStepStatusReady : ''} ${isActive ? styles.workflowStepStatusCurrent : ''}`}
-                        >
-                          {isActive ? 'Current step' : isReady ? 'Ready' : step.status}
-                        </span>
-                      </div>
-                      <strong>{step.label}</strong>
-                      <p className={styles.workflowStepDetail}>{step.description}</p>
-                    </div>
-                  );
-                })}
+              <div className={styles.previewTop}>
+                <span className={styles.pill}>
+                  {selectedProvider?.label ?? provider ?? 'Renderer'}
+                </span>
+                <span className={styles.pill}>{aspectRatio}</span>
+                <span className={styles.pill}>{activeStatus}</span>
               </div>
-              <div className={styles.summaryStrip}>
-                <div className={styles.summaryCard}>
-                  <span className={styles.summaryLabel}>Selected provider</span>
-                  <strong>{selectedProvider?.label ?? 'Choose in setup step'}</strong>
-                </div>
-                <div className={styles.summaryCard}>
-                  <span className={styles.summaryLabel}>Publish readiness</span>
-                  <strong>{video?.outputUrl ? 'Output available' : 'Waiting for render output'}</strong>
-                </div>
-              </div>
-            </section>
+            </div>
 
-            {/* Live preview */}
-            <section className={`${styles.card} ${styles.previewSection}`}>
-              <div className={`${styles.cardHeader} ${styles.previewSectionHeader}`}>
-                <div>
-                  <p className={styles.sectionEyebrow}>Live preview</p>
-                  <h2 className={styles.previewSectionTitle}>Preview stays visible while you move.</h2>
-                  <p className={styles.previewSectionCopy}>
-                    Keep the current output and render context in view without the sidebar feeling cramped.
+            <div className={styles.previewScreen}>
+              {previewMediaUrl && !previewPlaybackFailed ? (
+                <video
+                  autoPlay
+                  className={styles.previewVideo}
+                  controls
+                  loop
+                  muted
+                  onError={() => setPreviewPlaybackFailed(true)}
+                  playsInline
+                  preload="metadata"
+                  src={previewMediaUrl}
+                />
+              ) : previewMediaUrl ? (
+                <div className={styles.previewPlaceholder}>
+                  <span className={styles.previewLabel}>Output ready</span>
+                  <h3 className={styles.previewHeadline}>Inline playback is unavailable</h3>
+                  <p className={styles.previewPrompt}>
+                    The render finished, but this browser could not play it inline.
+                  </p>
+                  <a
+                    className={styles.secondaryButtonLink}
+                    href={previewSourceUrl ?? '#'}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Open output
+                  </a>
+                </div>
+              ) : (
+                <div className={styles.previewPlaceholder}>
+                  <span className={styles.previewLabel}>Current brief</span>
+                  <h3 className={styles.previewHeadline}>Luxury render preview</h3>
+                  <p className={styles.previewPrompt}>
+                    Start a render to keep the latest cut visible here while you
+                    refine export formats, posting copy, and the final presentation.
                   </p>
                 </div>
+              )}
+            </div>
+
+            <div className={styles.statusList}>
+              <div className={styles.statusRow}>
+                <span className={styles.statusLabel}>Brief</span>
+                <span className={styles.statusValue}>
+                  {prompt.trim() || 'No brief added yet'}
+                </span>
               </div>
-              <div className={styles.previewCanvas}>
-                <div className={styles.previewTop}>
-                  <div className={`${styles.meta} ${styles.previewMeta}`}>
-                    <span className={`${styles.pill} ${styles.previewPill}`}>{selectedProvider?.label ?? provider}</span>
-                    {selectedProvider ? <span className={`${styles.pill} ${styles.previewPill}`}>{toPriceTierLabel(selectedProvider.priceTier)}</span> : null}
-                    {selectedProvider ? <span className={`${styles.pill} ${styles.previewPill}`}>{selectedProvider.creditCost} credits</span> : null}
-                    <span className={`${styles.pill} ${styles.previewPill}`}>{aspectRatio}</span>
-                    <span className={`${styles.pill} ${styles.previewPill}`}>{activeStatus}</span>
-                  </div>
-                  <span className={`${styles.previewSignal} ${styles.previewSignalCompact}`}>Live</span>
-                </div>
-                <div className={styles.previewScreen}>
-                  {previewMediaUrl && !previewPlaybackFailed ? (
-                    <>
-                      <video
-                        autoPlay
-                        className={styles.previewVideo}
-                        controls
-                        loop
-                        muted
-                        onError={() => setPreviewPlaybackFailed(true)}
-                        playsInline
-                        preload="metadata"
-                        src={previewMediaUrl}
-                      />
-                      <div className={styles.previewOverlay}>
-                        <span className={styles.previewLabel}>Generated output</span>
-                        <h3 className={styles.previewHeadline}>{video?.title ?? 'Preview ready'}</h3>
-                        <p className={styles.previewPrompt}>{prompt}</p>
-                      </div>
-                    </>
-                  ) : previewMediaUrl ? (
-                    <div className={styles.previewFallback}>
-                      <span className={styles.previewLabel}>Generated output</span>
-                      <h3 className={styles.previewHeadline}>{video?.title ?? 'Output is ready'}</h3>
-                      <p className={styles.previewPrompt}>
-                        This render finished, but the returned asset could not be played inline.
-                        Open the output directly from the generated URL below.
-                      </p>
-                      <a
-                        className={styles.secondaryButton}
-                        href={previewMediaUrl}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        Open output
-                      </a>
-                    </div>
-                  ) : (
-                    <>
-                      <div className={styles.previewGlow} />
-                      <div className={styles.previewOverlay}>
-                        <span className={styles.previewLabel}>Current prompt</span>
-                        <h3 className={styles.previewHeadline}>{video?.title ?? 'Preview'}</h3>
-                        <p className={styles.previewPrompt}>{prompt}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className={`${styles.statusGrid} ${styles.previewStatusGrid}`}>
-                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
-                    <span className={styles.statusLabel}>Video ID</span>
-                    <span className={styles.statusValue}>{video?.id ?? 'Waiting for first request'}</span>
-                  </div>
-                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
-                    <span className={styles.statusLabel}>Output URL</span>
-                    <span className={styles.statusValue}>{video?.outputUrl ?? 'Rendering pipeline not started yet'}</span>
-                  </div>
-                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
-                    <span className={styles.statusLabel}>Voiceover</span>
-                    <span className={styles.statusValue}>{video?.voiceoverUrl ?? 'Will appear after orchestration'}</span>
-                  </div>
-                  <div className={`${styles.statusRow} ${styles.previewStatusRow}`}>
-                    <span className={styles.statusLabel}>Subtitles</span>
-                    <span className={styles.statusValue}>{video?.subtitlesUrl ?? 'Will appear after orchestration'}</span>
-                  </div>
-                </div>
+              <div className={styles.statusRow}>
+                <span className={styles.statusLabel}>Video ID</span>
+                <span className={styles.statusValue}>
+                  {video?.id ?? 'Waiting for first request'}
+                </span>
               </div>
-            </section>
+              <div className={styles.statusRow}>
+                <span className={styles.statusLabel}>Voiceover</span>
+                <span className={styles.statusValue}>
+                  {video?.voiceoverUrl ?? 'Available after orchestration'}
+                </span>
+              </div>
+              <div className={styles.statusRow}>
+                <span className={styles.statusLabel}>Subtitles</span>
+                <span className={styles.statusValue}>
+                  {video?.subtitlesUrl ?? 'Available after orchestration'}
+                </span>
+              </div>
+            </div>
           </aside>
         </div>
       </div>
     </main>
   );
 }
-
-// ─── Outer page (loads data, provides context) ────────────────────────────────
 
 export default function CreateVideoPage() {
   const router = useRouter();
@@ -649,7 +437,9 @@ export default function CreateVideoPage() {
       })
       .catch(() => undefined);
 
-    return () => { isActive = false; };
+    return () => {
+      isActive = false;
+    };
   }, [router]);
 
   return (

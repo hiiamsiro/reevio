@@ -39,6 +39,17 @@ export async function loadVideo(
   });
 }
 
+export async function loadVideoQueue(
+  router: AppRouter,
+  fallbackError: string
+): Promise<VideoResponse[] | null> {
+  return fetchResource<VideoResponse[]>({
+    path: '/api/video',
+    router,
+    fallbackError,
+  });
+}
+
 export async function refreshCurrentUser(
   setCurrentUser: Dispatch<SetStateAction<CurrentUser | null>>
 ): Promise<void> {

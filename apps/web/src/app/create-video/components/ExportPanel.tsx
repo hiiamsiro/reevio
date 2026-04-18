@@ -47,15 +47,15 @@ export function ExportPanel({
           className={`${styles.exportPreviewFrame} ${getExportFrameClassName(selectedExportFormat.id, styles)}`}
         >
           <div className={styles.exportPreviewOverlay}>
-            <span className={styles.selectedHookLabel}>{selectedExportFormat.platform}</span>
+            <span className={styles.infoLabel}>{selectedExportFormat.platform}</span>
             <strong>{selectedExportFormat.previewHeadline}</strong>
             <p className={styles.previewPrompt}>{selectedExportFormat.previewBody}</p>
-            <span className={styles.metaBadge}>{selectedExportFormat.ctaLabel}</span>
+            <span className={styles.metaBadge}>{selectedExportFormat.canvas}</span>
           </div>
         </div>
 
-        <div className={styles.selectedHookCard}>
-          <span className={styles.selectedHookLabel}>Layout behavior</span>
+        <div className={styles.infoCard}>
+          <span className={styles.infoLabel}>Layout behavior</span>
           <strong>{selectedExportFormat.layoutLabel}</strong>
         </div>
 

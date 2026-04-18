@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { readFile } from 'node:fs/promises';
 import {
   GeneratedImageAsset,
   OrchestratedVideoPlan,
@@ -8,6 +9,7 @@ import {
   VideoGenerationJobData,
 } from '@reevio/types';
 import { z } from 'zod';
+import { resolveLocalStoragePath } from '../storage/resolve-local-storage-path';
 
 const parsedPromptSchema = z.object({
   rawPrompt: z.string().min(1),
@@ -38,6 +40,11 @@ const generatedImageAssetSchema = z.object({
   prompt: z.string().min(1),
   url: z.string().url(),
   score: z.number(),
+  provider: z.enum(['cloudflare', 'huggingface', 'pexels', 'pixabay']).default('pexels'),
+  sourceKind: z.enum(['generated', 'stock']).default('stock'),
+  fallbackDepth: z.number().int().nonnegative().default(0),
+  attribution: z.string().min(1).optional(),
+  searchQuery: z.string().min(1).optional(),
 });
 
 const videoCacheMetadataSchema = z.object({
@@ -123,13 +130,17 @@ export async function getCachedVideoPipelineState(
     jobData.videoId,
     scenes.data.length
   );
+  const [voiceoverUrl, subtitlesUrl] = await Promise.all([
+    validateCachedArtifactUrl(cachedVideo.voiceoverUrl, isProbablyMp3File),
+    validateCachedArtifactUrl(cachedVideo.subtitlesUrl, isProbablyVttFile),
+  ]);
 
   return {
     parsedPrompt: parsedPrompt.data,
     orchestratedPlan,
     generatedAssets,
-    voiceoverUrl: cachedVideo.voiceoverUrl,
-    subtitlesUrl: cachedVideo.subtitlesUrl,
+    voiceoverUrl,
+    subtitlesUrl,
   };
 }
 
@@ -167,6 +178,11 @@ function toCachedGeneratedAssets(
     prompt: asset.prompt,
     url: asset.url,
     score: asset.score,
+    provider: asset.provider,
+    sourceKind: asset.sourceKind,
+    fallbackDepth: asset.fallbackDepth,
+    attribution: asset.attribution,
+    searchQuery: asset.searchQuery,
   }));
 }
 
@@ -175,4 +191,45 @@ function calculateDurationInSeconds(scenes: SceneOutline[]): number {
     (totalDurationInSeconds, scene) => totalDurationInSeconds + scene.durationInSeconds,
     0
   );
+}
+
+async function validateCachedArtifactUrl(
+  artifactUrl: string | null,
+  validator: (contents: Buffer) => boolean
+): Promise<string | null> {
+  if (!artifactUrl) {
+    return null;
+  }
+
+  const localStoragePath = resolveLocalStoragePath(artifactUrl);
+
+  if (!localStoragePath) {
+    return artifactUrl;
+  }
+
+  try {
+    const contents = await readFile(localStoragePath);
+    return validator(contents) ? artifactUrl : null;
+  } catch {
+    return null;
+  }
+}
+
+function isProbablyMp3File(contents: Buffer): boolean {
+  if (contents.length < 3) {
+    return false;
+  }
+
+  if (contents.subarray(0, 3).toString('ascii') === 'ID3') {
+    return true;
+  }
+
+  const firstByte = contents[0] ?? -1;
+  const secondByte = contents[1] ?? -1;
+
+  return firstByte === 0xff && (secondByte & 0xe0) === 0xe0;
+}
+
+function isProbablyVttFile(contents: Buffer): boolean {
+  return contents.subarray(0, 6).toString('utf8') === 'WEBVTT';
 }
